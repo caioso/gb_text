@@ -1,129 +1,129 @@
-; Base section
-section "base", ROM0
+; Test program
+include "inc/hardware.inc"
 
-; Define Library Symbols
-;
-GAME_NAME   equ "TEST_ROM_______"  ; Game name
-GBC_SUPPORT equ 1           ; GBC mode
-ROM_SIZE    equ 1           ; 64 KB
-RAM_SIZE    equ 1           ; 2 KB
+section "start", rom0[$0100]
+  nop
+  jp fn_main
 
-; include Ginerbread
-include "gingerbread/gingerbread.asm"
-include "gingerbread/examples/images/hello_world.inc"
+  ; ROM Header
+  ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 
-section "Text definitions",ROM0
-; charmap definition (based on the hello_world.png image, and looking in the VRAM viewer after loading it in BGB helps finding the values for each character)
-charmap "A",$14
-charmap "B",$15
-charmap "C",$16
-charmap "D",$17
-charmap "E",$18
-charmap "F",$19
-charmap "G",$1A
-charmap "H",$1B
-charmap "I",$1C
-charmap "J",$1D
-charmap "K",$1E
-charmap "L",$1F
-charmap "M",$20
-charmap "N",$21
-charmap "O",$22
-charmap "P",$23
-charmap "Q",$24
-charmap "R",$25
-charmap "S",$26
-charmap "T",$27
-charmap "U",$28
-charmap "V",$29
-charmap "W",$2A
-charmap "X",$2B
-charmap "Y",$2C
-charmap "Z",$2D
-charmap "<happy>",$02
-charmap "<sad>",$03
-charmap "<heart>",$04
-charmap "<up>",$07
-charmap "<down>",$08
-charmap "<left>",$06
-charmap "<right>",$05
-charmap " ",$00
-charmap "<end>",$30 ; Choose some non-character tile that's easy to remember
+  ; Main program
+fn_main:
+  nop
+  di              ; Disable interrupts
+  ld sp, $FFFF    ; Set stack to the end of RAM
+  ld a, %11100100 ; Load color palette
+                  ; Lighter, 11, 10, 01, 00 Darker
+  ld [rBGP], a    ; Load pallete into palette register
 
-SomeText:
-db "<left>DOES NOT WORK<right><end>"
+  ld a, 0
+  ld [rSCX], a    ; Set scroll registers (X/Y) to 0
+  ld [rSCY], a
 
-section "game",ROM0
-begin:
-  ld hl, hello_world_tile_data
-  ld de, TILEDATA_START
-  ld bc, hello_world_tile_data_size
-  call mCopyVRAM
+  call fn_switch_screen_off ; Clear LCD before writing to screen
 
-  ld b, $30 ; end character
-  ld c, 0 ; draw to background
-  ld d, 0 ; X start position (0-19)
-  ld e, 0 ; Y start position (0-17)
-  ld hl, SomeText ; text to write
-  call RenderTextToEnd
+  ; Load tile data to memory
+  ld hl, tl_face  ; load tile start address into hl
+  ld de, _VRAM    ; load Video RAM address into de
+  ld b, tl_bg_length - tl_face ; Number of tiles to load
 
-  ; Initialize
-  call StartLCD
+.loop_copy_tiles:
+  ld a, [hl]      ; load tile from tl_face into a
+  ld [de], a      ; load a into VRAM
+  dec b           ; b = b - 1
+  jr z, .loop_copy_tiles_end
+  inc hl          ; point to next tile
+  inc de          ; point to next address in VRAM
+  jr .loop_copy_tiles
+.loop_copy_tiles_end:
 
-; Main Loop
-  ld d, $0
-  ld e, $0
-main:
+
+  ; Not sure what this does anymore
+  ld de, $0000
+  ld hl, _SCRN0   ; set tile 0 to background tile 0
+  ld b, $00
+  ld c, $00
+.loop_set_tile:
+  bit %000, b
+  jr nz, .cn_load_mode_2
+  bit %000, c
+  jr nz, .cn_load_odd_tile
+  ld [hl], $00    ; $00 represents the copied tile
+  inc hl
+  jr .cn_increment_de
+.cn_load_odd_tile:
+  ld [hl], $01
+  inc hl
+  jr .cn_increment_de
+.cn_load_mode_2:
+    bit %000, c
+  jr nz, .cn_load_odd_tile_mode_2
+  ld [hl], $01    ; $00 represents the copied tile
+  inc hl
+  jr .cn_increment_de
+.cn_load_odd_tile_mode_2:
+  ld [hl], $00
+  inc hl
+.cn_increment_de:
+  inc de
+  inc c
+  ld a, c
+  cp $20
+  jp z, .cn_skip_tile_flip
+  ld a, b
+  cp $00
+  jp nz, .cn_set_zero
+  ld b, $01
+  jp .clear_c
+.cn_set_zero:
+  ld b, $00
+.clear_c:
+  ld a, $00
+  ld c, a
+.cn_skip_tile_flip:
+  ld a, d
+  cp $04
+  jr nz, .loop_set_tile
+  ld a, e
+  cp $00
+  jr nz, .loop_set_tile
+
+.loop_set_tiles_end:
+
+  ; Configure and activate display
+  ld a, LCDCF_ON | LCDCF_BG8000 | LCDCF_BG9800 | LCDCF_BGON | LCDCF_OBJ8 | LCDCF_OBJOFF
+  ld [rLCDC], a
+
+loop_main_loop:
   halt
   nop
+  jr loop_main_loop
 
-  call ReadKeys ; a will hold the key states
-  push af
-  ld c, a
-  and KEY_RIGHT
-  cp 0
-  jp z, right_not_pressed
-    ld a, d
-    dec a
-    ld d, a
-    jp vertical_movement
+fn_switch_screen_off:
+  ld a, [rLCDC]   ; LCD Control register
+  rlca            ; Set highest bit of LCDC into the carry flag
+  ret nc          ; Return if display is already off
 
-right_not_pressed:
-  pop af
-  push af
-  ld c, a
-  and KEY_LEFT
-  cp 0
-  jp z, vertical_movement
-    ld a, d
-    inc a
-    ld d, a
+  ; Wait for VBlank otherwise (to properly switch display off)
+.wait_for_vblank
+  ld a, [rLY]     ; Line Register (Y)
+  cp 145          ; Check if current line is 145
+  jr nz, .wait_for_vblank
 
-vertical_movement:
-  pop af
-  push af
-  ld c, a
-  and KEY_UP
-  cp 0
-  jp z, up_not_pressed
-    ld a, e
-    inc a
-    ld e, a
-    jp update_window
+  ; VBlank confirmed, switch off LCD
+  ld a, [rLCDC]   ; load LCD control register content into a
+  res 7, a        ; set bit 7 as zero (switch LCD off)
+  ld [rLCDC], a
+  ret
 
-up_not_pressed:
-  pop af
-  ld c, a
-  and KEY_DOWN
-  cp 0
-  jp z, update_window
-    ld a, e
-    dec a
-    ld e, a
+; Tile bytes
+tl_face:
+  db $7C, $7C, $82, $FE, $82, $D6, $82, $D6
+  db $82, $FE, $82, $BA, $82, $C6, $7C, $7C
+tl_face_length:
 
-update_window:
-  ld a, d
-  ld [SCROLL_X], a
-  ld a, e
-  ld [SCROLL_Y], a
-  jr main
+tl_bg:
+  db $AA, $00, $44, $00, $AA, $00, $11, $00
+  db $AA, $00, $44, $00, $AA, $00, $11, $00
+tl_bg_length:
