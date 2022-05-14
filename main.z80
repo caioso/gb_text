@@ -1,0 +1,129 @@
+; Base section
+section "base", ROM0
+
+; Define Library Symbols
+;
+GAME_NAME   equ "TEST_ROM_______"  ; Game name
+GBC_SUPPORT equ 1           ; GBC mode
+ROM_SIZE    equ 1           ; 64 KB
+RAM_SIZE    equ 1           ; 2 KB
+
+; include Ginerbread
+include "gingerbread/gingerbread.asm"
+include "gingerbread/examples/images/hello_world.inc"
+
+section "Text definitions",ROM0
+; charmap definition (based on the hello_world.png image, and looking in the VRAM viewer after loading it in BGB helps finding the values for each character)
+charmap "A",$14
+charmap "B",$15
+charmap "C",$16
+charmap "D",$17
+charmap "E",$18
+charmap "F",$19
+charmap "G",$1A
+charmap "H",$1B
+charmap "I",$1C
+charmap "J",$1D
+charmap "K",$1E
+charmap "L",$1F
+charmap "M",$20
+charmap "N",$21
+charmap "O",$22
+charmap "P",$23
+charmap "Q",$24
+charmap "R",$25
+charmap "S",$26
+charmap "T",$27
+charmap "U",$28
+charmap "V",$29
+charmap "W",$2A
+charmap "X",$2B
+charmap "Y",$2C
+charmap "Z",$2D
+charmap "<happy>",$02
+charmap "<sad>",$03
+charmap "<heart>",$04
+charmap "<up>",$07
+charmap "<down>",$08
+charmap "<left>",$06
+charmap "<right>",$05
+charmap " ",$00
+charmap "<end>",$30 ; Choose some non-character tile that's easy to remember
+
+SomeText:
+db "<left>DOES NOT WORK<right><end>"
+
+section "game",ROM0
+begin:
+  ld hl, hello_world_tile_data
+  ld de, TILEDATA_START
+  ld bc, hello_world_tile_data_size
+  call mCopyVRAM
+
+  ld b, $30 ; end character
+  ld c, 0 ; draw to background
+  ld d, 0 ; X start position (0-19)
+  ld e, 0 ; Y start position (0-17)
+  ld hl, SomeText ; text to write
+  call RenderTextToEnd
+
+  ; Initialize
+  call StartLCD
+
+; Main Loop
+  ld d, $0
+  ld e, $0
+main:
+  halt
+  nop
+
+  call ReadKeys ; a will hold the key states
+  push af
+  ld c, a
+  and KEY_RIGHT
+  cp 0
+  jp z, right_not_pressed
+    ld a, d
+    dec a
+    ld d, a
+    jp vertical_movement
+
+right_not_pressed:
+  pop af
+  push af
+  ld c, a
+  and KEY_LEFT
+  cp 0
+  jp z, vertical_movement
+    ld a, d
+    inc a
+    ld d, a
+
+vertical_movement:
+  pop af
+  push af
+  ld c, a
+  and KEY_UP
+  cp 0
+  jp z, up_not_pressed
+    ld a, e
+    inc a
+    ld e, a
+    jp update_window
+
+up_not_pressed:
+  pop af
+  ld c, a
+  and KEY_DOWN
+  cp 0
+  jp z, update_window
+    ld a, e
+    dec a
+    ld e, a
+
+update_window:
+  ld a, d
+  ld [SCROLL_X], a
+  ld a, e
+  ld [SCROLL_Y], a
+  jr main
