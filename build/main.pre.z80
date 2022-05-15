@@ -24,79 +24,79 @@ fn_main:
   call fn_switch_screen_off ; Clear LCD before writing to screen
 
   ; Create lables
-  !alias de, VRAM_pointer
-  !alias hl, tile_pointer
-  !alias b, tile_counter
+;   !alias de, VRAM_pointer
+;   !alias hl, tile_pointer
+;   !alias b, tile_counter
 
   ; Load tile data to memory
-  ld tile_pointer, tl_face  ; load tile start address into hl
-  ld VRAM_pointer, _VRAM    ; load Video RAM address into de
-  ld tile_counter, tl_bg_length - tl_white_length ; Number of tiles to load
+  ld hl, tl_face  ; load tile start address into hl
+  ld de, _VRAM    ; load Video RAM address into de
+  ld b, tl_bg_length - tl_white_length ; Number of tiles to load
 
 .loop_copy_tiles:
-  ld a, [tile_pointer]      ; load tile from tl_face into a
-  ld [VRAM_pointer], a      ; load a into VRAM
-  dec tile_counter          ; b = b - 1
+  ld a, [hl]      ; load tile from tl_face into a
+  ld [de], a      ; load a into VRAM
+  dec b          ; b = b - 1
   jr z, .loop_copy_tiles_end
-  inc tile_pointer          ; point to next tile
-  inc VRAM_pointer          ; point to next address in VRAM
+  inc hl          ; point to next tile
+  inc de          ; point to next address in VRAM
   jr .loop_copy_tiles
 
   ; Remove labels
-  !unalias VRAM_pointer
-  !unalias tile_pointer
-  !unalias tile_counter
+;   !unalias VRAM_pointer
+;   !unalias tile_pointer
+;   !unalias tile_counter
 
 .loop_copy_tiles_end:
 
-  !alias hl, tile_pointer
-  !alias b, line_counter
-  !alias c, column_counter
-  ld tile_pointer, _SCRN0   ; set tile 0 to background tile 0
+;   !alias hl, tile_pointer
+;   !alias b, line_counter
+;   !alias c, column_counter
+  ld hl, _SCRN0   ; set tile 0 to background tile 0
   ; Load alternate tiles to the background
   ; Initialize line counter
-  ld line_counter, $00
-.loop_line_counter:
+  ld b, $00
+.loop_b:
   ; Initialize column counter
-  ld column_counter, $00
-.loop_column_counter:
+  ld c, $00
+.loop_c:
 
   ; load tiles
-  bit %000, line_counter
+  bit %000, b
   jr z, .loop_load_even_line_tiles
 .loop_load_odd_line_tiles
-  bit %000, column_counter
+  bit %000, c
   jr z, .loop_load_white_1
 .loop_load_black_1
-  ld [tile_pointer], $02
+  ld [hl], $02
   jr .loop_write_tile_to_map
 .loop_load_white_1
-  ld [tile_pointer], $03
+  ld [hl], $03
   jr .loop_write_tile_to_map
 .loop_load_even_line_tiles
-  bit %000, column_counter
+  bit %000, c
   jr nz, .loop_load_white_2
 .loop_load_black_2
-  ld [tile_pointer], $02
+  ld [hl], $02
   jr .loop_write_tile_to_map
 .loop_load_white_2
-  ld [tile_pointer], $03
+  ld [hl], $03
 .loop_write_tile_to_map
-  inc tile_pointer
+  inc hl
   ; loop logic
-  inc column_counter
-  ld a, column_counter
+  inc c
+  ld a, c
   cp $20
-  jr nz, .loop_column_counter
+  jr nz, .loop_c
 
   ; clear column and move to the next line
-  inc line_counter
-  ld a, line_counter
+  inc b
+  ld a, b
   cp $20
-  jr nz, .loop_line_counter
-  !unalias tile_pointer
-  !unalias column_counter
-  !unalias line_counter
+  jr nz, .loop_b
+;   !unalias tile_pointer
+;   !unalias column_counter
+;   !unalias line_counter
 
 .loop_set_tiles_end:
 
@@ -104,37 +104,37 @@ fn_main:
   ld a, LCDCF_ON | LCDCF_BG8000 | LCDCF_BG9800 | LCDCF_BGON | LCDCF_OBJ8 | LCDCF_OBJOFF
   ld [rLCDC], a
 
-  !alias c, outer_counter
-  !alias d, x_movement
-  !alias e, y_movement
+;   !alias c, outer_counter
+;   !alias d, x_movement
+;   !alias e, y_movement
 
-  ld outer_counter, $00
+  ld c, $00
 loop_main_loop:
 .wait_for_vblank:
   ld a, [rLY]     ; Line Register (Y)
   cp 145          ; Check if current line is 145
   jr nz, .wait_for_vblank
-  inc outer_counter
-  ld a, outer_counter
+  inc c
+  ld a, c
   cp $30
   jp nz, loop_main_loop
 .cnd_move_bc:
   ld a, $00
-  ld outer_counter, a
-  ld a, x_movement
+  ld c, a
+  ld a, d
   inc a
-  ld x_movement, a
+  ld d, a
   ld [rSCX], a    ; Set scroll registers (X/Y) to 0
-  ld a, y_movement
+  ld a, e
   dec a
-  ld y_movement, a
+  ld e, a
   ld [rSCY], a
   jr loop_main_loop
 
   ; Remove labels
-  !unalias outer_counter
-  !unalias x_movement
-  !unalias y_movement
+;   !unalias outer_counter
+;   !unalias x_movement
+;   !unalias y_movement
 
 fn_switch_screen_off:
   ld a, [rLCDC]   ; LCD Control register

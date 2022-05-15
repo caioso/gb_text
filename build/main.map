@@ -1,14 +1,14 @@
 ROM0 bank #0:
-  SECTION: $0100-$0211 ($0112 bytes) ["start"]
+  SECTION: $0100-$0213 ($0114 bytes) ["start"]
            $0150 = fn_main
            $0173 = fn_main.loop_copy_tiles_end
            $0186 = fn_main.loop_load_white_1
            $018a = fn_main.loop_load_even_line_tiles
            $0192 = fn_main.loop_load_white_2
            $0194 = fn_main.loop_write_tile_to_map
-           $01c1 = fn_switch_screen_off
-           $01d2 = tl_face
-           $01f2 = tl_bg_length
-           $0212 = tl_white_length
-    SLACK: $3eee bytes
+           $01c3 = fn_switch_screen_off
+           $01d4 = tl_face
+           $01f4 = tl_bg_length
+           $0214 = tl_white_length
+    SLACK: $3eec bytes
 
