@@ -90,6 +90,9 @@ fn_main:
   ld b, $00
   ld c, $00
 loop_main_loop:
+  def c, outer_coutner
+      def b, inner_counter
+def hl, my_pointer_counter
 .wait_for_vblank:
   ld a, [rLY]     ; Line Register (Y)
   cp 145          ; Check if current line is 145
@@ -99,6 +102,7 @@ loop_main_loop:
   cp $30
   jp nz, loop_main_loop
 .cnd_move_bc:
+  undef outer_coutner
   ld a, $00
   ld c, a
   ld a, b
@@ -106,6 +110,8 @@ loop_main_loop:
   ld [rSCY], a
   inc b
   jr loop_main_loop
+  undef inner_counter
+  undef my_pointer_counter
 
 fn_switch_screen_off:
   ld a, [rLCDC]   ; LCD Control register
