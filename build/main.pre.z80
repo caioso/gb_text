@@ -1,6 +1,16 @@
 ; Test program
 include "inc/hardware.inc"
 
+; Memory definition
+sprite_y    equ _OAMRAM
+sprite_x    equ _OAMRAM + 1
+sprite_num  equ _OAMRAM + 2
+sprite_att  equ _OAMRAM + 3
+
+; Control variables
+movement_x  equ _RAM
+movement_y  equ _RAM + 1
+
 section "start", rom0[$0100]
   nop
   jp fn_main
@@ -98,20 +108,98 @@ fn_main:
 ;   !unalias column_counter
 ;   !unalias line_counter
 
-.loop_set_tiles_end:
+  ; Configure Sprites
+;   !alias hl, sprite_memory_pointer
+;   !alias c, sprite_counter
+  ld hl, _OAMRAM
+  ld c, 40
 
+.loop_clear_oamram:
+  ld a, $00
+  ld [hl], a ; Y
+  inc hl
+  ld [hl], a ; X
+  inc hl
+  ld [hl], a ; Tile
+  inc hl
+  ld [hl], a ; attribute
+  inc hl
+  dec c
+  jr nz, .loop_clear_oamram
+
+;   !unalias sprite_memory_pointer
+;   !unalias sprite_counter
+
+  ; Initialize first sprite
+  ld a, 30
+  ld [sprite_y], a
+  ld a, 30
+  ld [sprite_x], a
+  ld a, 0
+  ld [sprite_num], a ; Tile used for the sprite
+  ld a, 0
+  ld [sprite_att], a
+  ld a, 1
+  ld [movement_x], a
+  ld a, 1
+  ld [movement_y], a
+
+.loop_set_tiles_end:
   ; Configure and activate display
-  ld a, LCDCF_ON | LCDCF_BG8000 | LCDCF_BG9800 | LCDCF_BGON | LCDCF_OBJ8 | LCDCF_OBJOFF
+  ld a, LCDCF_ON | LCDCF_BG8000 | LCDCF_BG9800 | LCDCF_BGON | LCDCF_OBJ8 | LCDCF_OBJON
   ld [rLCDC], a
 
 ;   !alias c, outer_counter
   ld c, $00
 loop_main_loop:
   ; call background update logic
+  call fn_main_loop_sprite_update
   call fn_main_loop_bg_update
   jr loop_main_loop
 
 ;   !unalias outer_counter
+
+fn_main_loop_sprite_update:
+.wait
+  ld a, [rLY]
+  cp 145
+  jr nz, .wait
+  ld a, [movement_x]
+  ld hl, sprite_x
+  add a, [hl]
+  ld [hl], a
+  cp 160
+  jr z, .dec_x
+  cp 8
+  jr z, .inc_x
+  jr .end_x
+.inc_x
+  ld a, 1
+  ld [movement_x], a
+  jr .end_x
+.dec_x
+  ld a, -1
+  ld [movement_x], a
+.end_x
+  ld a, [movement_y]
+  ld hl, sprite_y
+  add a, [hl]
+  ld [hl], a
+  cp 152
+  jr z, .dec_y
+  cp 16
+  jr z, .inc_y
+  jr .end_y
+.inc_y
+  ld a, 1
+  ld [movement_y], a
+  jr .end_y
+.dec_y
+  ld a, -1
+  ld [movement_y], a
+.end_y
+  ret
+
 
 fn_main_loop_bg_update:
 ;   !alias c, outer_counter
@@ -169,8 +257,8 @@ tl_bg:
 tl_bg_length:
 
 tl_black:
-  db $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-  db $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+  db $55, $AA, $55, $AA, $55, $AA, $55, $AA
+  db $55, $AA, $55, $AA, $55, $AA, $55, $AA
 tl_black_length:
 
 tl_white:
