@@ -105,11 +105,18 @@ fn_main:
   ld [rLCDC], a
 
 ;   !alias c, outer_counter
-;   !alias d, x_movement
-;   !alias e, y_movement
-
   ld c, $00
 loop_main_loop:
+  ; call background update logic
+  call fn_main_loop_bg_update
+  jr loop_main_loop
+
+;   !unalias outer_counter
+
+fn_main_loop_bg_update:
+;   !alias c, outer_counter
+;   !alias d, x_movement
+;   !alias e, y_movement
 .wait_for_vblank:
   ld a, [rLY]     ; Line Register (Y)
   cp 145          ; Check if current line is 145
@@ -117,19 +124,16 @@ loop_main_loop:
   inc c
   ld a, c
   cp $30
-  jp nz, loop_main_loop
+  ret nz
 .cnd_move_bc:
-  ld a, $00
-  ld c, a
+  ld c, $00
+  inc d
   ld a, d
-  inc a
-  ld d, a
   ld [rSCX], a    ; Set scroll registers (X/Y) to 0
+  dec e
   ld a, e
-  dec a
-  ld e, a
   ld [rSCY], a
-  jr loop_main_loop
+  ret
 
   ; Remove labels
 ;   !unalias outer_counter

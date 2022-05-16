@@ -5,7 +5,8 @@
 00:018a fn_main.loop_load_even_line_tiles
 00:0192 fn_main.loop_load_white_2
 00:0194 fn_main.loop_write_tile_to_map
-00:01c3 fn_switch_screen_off
-00:01d4 tl_face
-00:01f4 tl_bg_length
-00:0214 tl_white_length
+00:01ac fn_main_loop_bg_update
+00:01c2 fn_switch_screen_off
+00:01d3 tl_face
+00:01f3 tl_bg_length
+00:0213 tl_white_length
