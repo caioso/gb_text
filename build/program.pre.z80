@@ -1,0 +1,55 @@
+; Test program
+include "inc/hardware.inc"
+
+; Section definition
+section "start", rom0[$0100]
+nop
+jp gameboy_game ; Jump to program entry
+
+; ROM Header
+ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
+
+; Type definition
+;block struct
+;  name sprite
+;  def position_x
+;  def position_y
+;  def tile
+;  def attributes
+;end ; struct
+
+; Main program
+; block prog
+  name gameboy_game
+
+  ; Define alias
+;   alias c, counter
+;   alias b, value
+  ld c, $00
+
+;   block if
+;     alias hl, vram_value
+;     alias a, counter
+;     alias d, value
+;     alias e, index
+    ; ...
+    ld [hl], $01
+    add a, d
+;   end ; if
+
+;   alias c, index
+;   block loop
+    ; ...
+    ld a, vram_value
+    inc c
+;     block if ; index, z
+      break
+;     end
+;   end ; loop
+
+  inc index_2
+;   alias hl, pointer
+  ld a, [hl]
+  ; ...
+
+; end ; prog

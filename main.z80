@@ -34,34 +34,31 @@ fn_main:
   call fn_switch_screen_off ; Clear LCD before writing to screen
 
   ; Create lables
-  !alias de, VRAM_pointer
-  !alias hl, tile_pointer
-  !alias b, tile_counter
+  block
+    alias de, VRAM_pointer
+    alias hl, tile_pointer
+    alias b, tile_counter
 
-  ; Load tile data to memory
-  ld tile_pointer, tl_face  ; load tile start address into hl
-  ld VRAM_pointer, _VRAM    ; load Video RAM address into de
-  ld tile_counter, tl_bg_length - tl_white_length ; Number of tiles to load
+    ; Load tile data to memory
+    ld tile_pointer, tl_face  ; load tile start address into hl
+    ld VRAM_pointer, _VRAM    ; load Video RAM address into de
+    ld tile_counter, tl_bg_length - tl_white_length ; Number of tiles to load
 
-.loop_copy_tiles:
-  ld a, [tile_pointer]      ; load tile from tl_face into a
-  ld [VRAM_pointer], a      ; load a into VRAM
-  dec tile_counter          ; b = b - 1
-  jr z, .loop_copy_tiles_end
-  inc tile_pointer          ; point to next tile
-  inc VRAM_pointer          ; point to next address in VRAM
-  jr .loop_copy_tiles
-
-  ; Remove labels
-  !unalias VRAM_pointer
-  !unalias tile_pointer
-  !unalias tile_counter
+  .loop_copy_tiles:
+    ld a, [tile_pointer]      ; load tile from tl_face into a
+    ld [VRAM_pointer], a      ; load a into VRAM
+    dec tile_counter          ; b = b - 1
+    jr z, .loop_copy_tiles_end
+    inc tile_pointer          ; point to next tile
+    inc VRAM_pointer          ; point to next address in VRAM
+    jr .loop_copy_tiles
+  end
 
 .loop_copy_tiles_end:
 
-  !alias hl, tile_pointer
-  !alias b, line_counter
-  !alias c, column_counter
+  alias hl, tile_pointer
+  alias b, line_counter
+  alias c, column_counter
   ld tile_pointer, _SCRN0   ; set tile 0 to background tile 0
   ; Load alternate tiles to the background
   ; Initialize line counter
@@ -104,13 +101,10 @@ fn_main:
   ld a, line_counter
   cp $20
   jr nz, .loop_line_counter
-  !unalias tile_pointer
-  !unalias column_counter
-  !unalias line_counter
 
   ; Configure Sprites
-  !alias hl, sprite_memory_pointer
-  !alias c, sprite_counter
+  alias hl, sprite_memory_pointer
+  alias c, sprite_counter
   ld sprite_memory_pointer, _OAMRAM
   ld sprite_counter, 40
 
@@ -126,9 +120,6 @@ fn_main:
   inc sprite_memory_pointer
   dec sprite_counter
   jr nz, .loop_clear_oamram
-
-  !unalias sprite_memory_pointer
-  !unalias sprite_counter
 
   ; Initialize first sprite
   ld a, 30
@@ -149,62 +140,65 @@ fn_main:
   ld a, LCDCF_ON | LCDCF_BG8000 | LCDCF_BG9800 | LCDCF_BGON | LCDCF_OBJ8 | LCDCF_OBJON
   ld [rLCDC], a
 
-  !alias c, outer_counter
-  ld outer_counter, $00
+  block
+    alias c, outer_counter
+    ld outer_counter, $00
 loop_main_loop:
-  ; call background update logic
-  call fn_main_loop_sprite_update
-  call fn_main_loop_bg_update
-  jr loop_main_loop
-
-  !unalias outer_counter
+    ; call background update logic
+    call fn_main_loop_sprite_update
+    call fn_main_loop_bg_update
+    jr loop_main_loop
+  end
 
 fn_main_loop_sprite_update:
-.wait
-  ld a, [rLY]
-  cp 145
-  jr nz, .wait
-  ld a, [movement_x]
-  ld hl, sprite_x
-  add a, [hl]
-  ld [hl], a
-  cp 160
-  jr z, .dec_x
-  cp 8
-  jr z, .inc_x
-  jr .end_x
-.inc_x
-  ld a, 1
-  ld [movement_x], a
-  jr .end_x
-.dec_x
-  ld a, -1
-  ld [movement_x], a
-.end_x
-  ld a, [movement_y]
-  ld hl, sprite_y
-  add a, [hl]
-  ld [hl], a
-  cp 152
-  jr z, .dec_y
-  cp 16
-  jr z, .inc_y
-  jr .end_y
-.inc_y
-  ld a, 1
-  ld [movement_y], a
-  jr .end_y
-.dec_y
-  ld a, -1
-  ld [movement_y], a
-.end_y
-  ret
+  block
+    .wait
+      ld a, [rLY]
+      cp 145
+      jr nz, .wait
+      ld a, [movement_x]
+      ld hl, sprite_x
+      add a, [hl]
+      ld [hl], a
+      cp 160
+      jr z, .dec_x
+      cp 8
+      jr z, .inc_x
+      jr .end_x
+    .inc_x
+      ld a, 1
+      ld [movement_x], a
+      jr .end_x
+    .dec_x
+      ld a, -1
+      ld [movement_x], a
+    .end_x
+      ld a, [movement_y]
+      ld hl, sprite_y
+      add a, [hl]
+      ld [hl], a
+      cp 152
+      jr z, .dec_y
+      cp 16
+      jr z, .inc_y
+      jr .end_y
+    .inc_y
+      ld a, 1
+      ld [movement_y], a
+      jr .end_y
+    .dec_y
+      ld a, -1
+      ld [movement_y], a
+    .end_y
+      ret
+  end
 
 
 fn_main_loop_bg_update:
-  !alias c, outer_counter
-  !alias d, x_movement
-  !alias e, y_movement
+block
+  alias c, outer_counter
+  alias d, x_movement
+  alias e, y_movement
 .wait_for_vblank:
   ld a, [rLY]     ; Line Register (Y)
   cp 145          ; Check if current line is 145
@@ -222,11 +216,8 @@ fn_main_loop_bg_update:
   ld a, y_movement
   ld [rSCY], a
   ret
+end
 
-  ; Remove labels
-  !unalias outer_counter
-  !unalias x_movement
-  !unalias y_movement
 
 fn_switch_screen_off:
   ld a, [rLCDC]   ; LCD Control register
