@@ -1,26 +1,68 @@
 #!/usr/bin/env python3
 
-import enum
+from calendar import c
 import os
 import re
 import argparse
 import sys
 
 from enum import Enum
-from turtle import clear
 from typing import List, Tuple
 
 # sys.tracebacklimit = 0
 
-ALIAS_REGEX = r"^(\s)*alias(\s)*(\w)+,(\s)*(\w)+(\s)*$"
-BLOCK_REGEX = r"^(\s)*block(\s)*(prog|loop|func|if|struct)?(\s)*$"
-END_REGEX = r"^(\s)*end(\s)*$"
+# Keywords
+# General
+KEYWORD_BLOCK = "blk"
+KEYWORD_END = "end"
+KEYWORD_NAME = "name"
+
+# Alias
+KEYWORD_ALIAS = "als"
+
+# Loop
+KEYWORD_LOOP = "lp"
+KEYWORD_BREAK = "brk"
+
+# Progam
+KEYWORD_PROGRAM = "prg"
+
+# Functions
+KEYWORD_FUNCTION = "fn"
+KEYWORD_IN = "in"
+KEYWORD_OUT = "out"
+KEYWORD_INVOKE = "invk"
+
+# Conditions
+KEYWORD_CONDITION = "cnd"
+
+# Structs
+KEYWORD_DATA_STRUCT = "ds"
+
+# Regex Templates
+ALIAS_REGEX = r"^(\s)*" + KEYWORD_ALIAS + "(\s)*(\w)+,(\s)*(\w)+(\s)*$"
+BLOCK_REGEX = r"^(\s)*" + KEYWORD_BLOCK + "(\s)*(" + KEYWORD_PROGRAM + "|" + \
+                                     KEYWORD_LOOP + "|" + \
+                                     KEYWORD_FUNCTION + "|" + \
+                                     KEYWORD_CONDITION + "|" + \
+                                     KEYWORD_DATA_STRUCT + ")?(\s)*$"
+NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*(\w)+(\s)*$"
+FUNCTION_ARG_REGEX = r"^(\s)*(" + KEYWORD_IN + "|" + KEYWORD_OUT + ")(\s)*(\w)+(\s)*$"
+END_REGEX = r"^(\s)*" + KEYWORD_END +"(\s)*$"
 
 class Utils:
   @staticmethod
   def extract_line_no_comments(line: str) -> str:
     index = line.find(';')
     return line if index == -1 else line[:index]
+
+  @staticmethod
+  def extract_code_fragment_no_comment(lines: List[str], start: int, end: int) -> str:
+    fragment = ""
+
+    for line in range(start, end):
+      fragment += Utils.extract_line_no_comments(lines[line])
+    return fragment
 
   @staticmethod
   def get_flat_text(text: List[str]) -> str:
@@ -40,9 +82,16 @@ class BlockMarkerType(Enum):
 
 class BlockType(Enum):
   GENERIC_BLOCK = "GENERIC_BLOCK"
-  IF_BLOCK = "IF_BLOCK"
-  LOOP_BLOCK = "LOOP_BLOCK"
-  FUNC_BLOCK = "FUNC_BLOCK"
+  CND_BLOCK = "CND_BLOCK"
+  LP_BLOCK = "LP_BLOCK"
+  FNC_BLOCK = "FNC_BLOCK"
+  DS_BLOCK = "DS_BLOCK"
+  PRG_BLOCK = "PRG_BLOCK"
+  NONE_BLOCK = "NONE_BLOCK" # Used to mark an 'end' token
+
+class FunctionArgumentType(Enum):
+  IN_ARG = "IN_ARG"
+  OUT_ARG = "OUT_ARG"
 
 class Block:
   def __init__(self, start: int, end: int,  type: BlockType, id: int):
@@ -109,6 +158,42 @@ class Alias:
   def operation(self) -> LabelOperation:
     return self._op
 
+class FunctionArgument:
+  def __init__(self, name:str, arg_type: FunctionArgumentType, pos:int) -> None:
+    self._name = name
+    self._arg_type = arg_type
+    self._pos = pos
+
+  @property
+  def name(self) -> str:
+    return self._name
+
+  @property
+  def argument_type(self) -> FunctionArgumentType:
+    return self._arg_type
+
+  @property
+  def position(self) -> int:
+    return self._pos
+
+class Function:
+  def __init__(self, name: str, block: Block, args: List[FunctionArgument]):
+    self._name = name
+    self._block = block
+    self._args = args
+
+  @property
+  def name(self) -> str:
+    return self._name
+
+  @property
+  def block(self) -> Block:
+    return self._block
+
+  @property
+  def arguments(self) -> List[FunctionArgument]:
+    return self._block
+
 class BlocksMappingPass:
   def __init__(self, input_file: str, source: List[str]):
     self._raw_source = source
@@ -123,15 +208,43 @@ class BlocksMappingPass:
 
   def _detect_blocks(self) -> None:
     self._block_list = []
+    self._block_type_list = []
 
     for idx, line in enumerate(self._processed_source):
       clear_line = Utils.extract_line_no_comments(line)
       if re.match(BLOCK_REGEX, clear_line):
         self._processed_source[idx] = f"; {line}"
         self._block_list.append(BlockMarker(idx, BlockMarkerType.BLOCK_START))
+        self._block_type_list.append(self._detect_block_type(clear_line, idx))
       elif re.match(END_REGEX, clear_line):
         self._processed_source[idx] = f"; {line}"
         self._block_list.append(BlockMarker(idx, BlockMarkerType.BLOCK_END))
+        self._block_type_list.append(self._detect_block_type(clear_line, idx))
+
+  def _detect_block_type(self, line: str, idx: int) -> BlockType:
+    # This function assumes a clear line as input (no comments)
+    tokens = re.split('\s+', line)
+    tokens = [x for x in tokens if len(x) != 0]
+
+    if len(tokens) == 1:
+      return BlockType.GENERIC_BLOCK
+    elif len(tokens) == 2:
+      if tokens[1] == KEYWORD_LOOP:
+        return BlockType.LP_BLOCK
+      elif tokens[1] == KEYWORD_CONDITION:
+        return BlockType.CND_BLOCK
+      elif tokens[1] == KEYWORD_FUNCTION:
+        return BlockType.FNC_BLOCK
+      elif tokens[1] == KEYWORD_DATA_STRUCT:
+        return BlockType.DS_BLOCK
+      elif tokens[1] == KEYWORD_PROGRAM:
+        return BlockType.PRG_BLOCK
+      else:
+        raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                               f"{idx + 1}: invalid block type")
+    else:
+      raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                               f"{idx + 1}: invalid block structure")
 
   def _validate_blocks(self) -> None:
     block_stack = []
@@ -152,16 +265,17 @@ class BlocksMappingPass:
   def _generate_blocks(self) -> List[Block]:
     blocks = []
     blocks_start = []
-    block_start = 0
+    block_start = []
+    blocks_type = []
     block_end = 0
-    block_type = BlockType.GENERIC_BLOCK
 
-    for block in self._block_list:
+    for idx, block in enumerate(self._block_list):
       if block.type == BlockMarkerType.BLOCK_START:
         blocks_start.append(block.position)
-        block_type = BlockType.GENERIC_BLOCK
+        blocks_type.append(self._block_type_list[idx])
       elif block.type == BlockMarkerType.BLOCK_END:
         block_start = blocks_start.pop()
+        block_type = blocks_type.pop()
         block_end = block.position
         blocks.append(Block(block_start, block_end, block_type, len(blocks)))
 
@@ -183,18 +297,17 @@ class RegisterLabelPass:
     self._process_source(aliasses)
     self._correct_remaining_aliases(aliasses)
 
+    return self._processed_source
+
   def _locate_alias_operations(self) -> List[Alias]:
     aliasses = []
-    for block in self._blocks:
-      print(f"Block id {block.id} start {block.start} end {block.end}")
-
     for idx, line in enumerate(self._raw_source):
       clear_line = Utils.extract_line_no_comments(line)
 
       if re.match(ALIAS_REGEX, clear_line):
         self._raw_source[idx] = f"; {line}"
 
-        proper_command = re.split('alias', clear_line)[1]
+        proper_command = re.split(KEYWORD_ALIAS, clear_line)[1]
         target_alias = re.split(',', proper_command)[1].strip()
         target_register = re.split(',', proper_command)[0].strip()
 
@@ -237,9 +350,10 @@ class RegisterLabelPass:
     for idx, line in enumerate(self._raw_source):
       clear_line = Utils.extract_line_no_comments(line)
       split_line = re.split('\s+', clear_line)
+      split_line = [x for x in split_line if len(x) != 0]
 
       line_text = line
-      for line_token in split_line:
+      for _ in split_line:
         for target_alias in [x for x in aliasses if x.parent_block_id == self._find_parent_block_id(idx)]:
           if re.search(r"\b" + (target_alias.name) + r"\b" , clear_line):
             line_text = line.replace(target_alias.name, target_alias.register)
@@ -263,11 +377,6 @@ class RegisterLabelPass:
               print(f"Warning: {os.path.basename(self._input_file)} line " +
                     f"{idx + 1}: likely undefined register alias '{target_alias.name}'")
             else:
-              print (idx)
-              print (decendent)
-              print ([x.name for x in allowed_aliases if x.parent_block_id in decendent])
-              print(target_alias.name)
-              print (([x.register for x in allowed_aliases if x.name == target_alias.name]))
               candidate_alias = [x for x in allowed_aliases if x.name == target_alias.name]
               closest_index = -1
               min_diff = sys.maxsize
@@ -279,6 +388,64 @@ class RegisterLabelPass:
 
               line_text = line.replace(target_alias.name, candidate_alias[closest_index].register)
               self._processed_source[idx] = line_text
+
+class FunctionPass:
+  def __init__(self, input_file: str, source: List[str], blocks: List[Block]):
+    self._raw_source = source
+    self._input_file = input_file
+    self._blocks = blocks
+
+  def process(self) -> None:
+    self._processed_source = self._raw_source
+    functions_blocks = self._find_functions()
+    functions = self._process_function(functions_blocks)
+    return self._processed_source
+
+  def _find_functions(self) -> List[Block]:
+    return [x for x in self._blocks if x.type == BlockType.FNC_BLOCK]
+
+  def _process_function(self, func_blocks: List[Block]) -> Function:
+    functions = []
+
+    for block in func_blocks:
+      name = self._extract_function_name(block)
+      args = self._extract_function_arguments(name, block)
+      print(f"Function {name}")
+      for arg in args:
+        print(f"\tArgunment[{arg.argument_type.value}] {arg.name} ({arg.position})")
+      function = Function(name, block, args)
+      functions.append(function)
+    return functions
+
+  def _extract_function_name(self, blk: Block) -> str:
+    name = ""
+    for line in range(blk.start, blk.end):
+      clear_line = Utils.extract_line_no_comments(self._raw_source[line])
+      if (re.match(NAME_REGEX, clear_line)):
+        tokens = re.split('\s+', clear_line)
+        tokens = [x for x in tokens if len(x) != 0]
+
+        if name != "":
+          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                               f"{line + 1}: unexpected keyword 'name' " +
+                               f"in function '{name}'")
+        name = tokens[1]
+
+    return name
+
+  def _extract_function_arguments(self,
+                                  fn_name: str,
+                                  blk: Block) -> List[FunctionArgument]:
+    args = []
+    for line in range(blk.start, blk.end):
+      clear_line = Utils.extract_line_no_comments(self._raw_source[line])
+      if (re.match(FUNCTION_ARG_REGEX, clear_line)):
+        tokens = re.split('\s+', clear_line)
+        tokens = [x for x in tokens if len(x) != 0]
+        args.append(FunctionArgument(tokens[1],
+                    (FunctionArgumentType.IN_ARG if "in" in tokens[0] else FunctionArgumentType.OUT_ARG),
+                    line))
+    return args
 
 
 def main():
@@ -303,10 +470,11 @@ def process_file(input_file: str, output_file: str) -> None:
   blocks_detection_pass = BlocksMappingPass(input_file, file_source)
   file_source, blocks = blocks_detection_pass.process()
   reg_alias_pass = RegisterLabelPass(input_file, file_source, blocks)
-  reg_alias_pass.process()
+  file_source = reg_alias_pass.process()
+  function_detection_pass = FunctionPass(input_file, file_source, blocks)
+  file_source = function_detection_pass.process()
 
-
-  final_source = reg_alias_pass.processed_source
+  final_source = file_source
   #save file
   with open(output_file, 'w') as f:
     f.write(Utils.get_flat_text(final_source))

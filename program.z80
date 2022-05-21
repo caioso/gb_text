@@ -10,7 +10,7 @@ jp gameboy_game ; Jump to program entry
 ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 
 ; Type definition
-;block struct
+;blk struct
 ;  name sprite
 ;  def position_x
 ;  def position_y
@@ -19,37 +19,63 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 ;end ; struct
 
 ; Main program
-block prog
+blk prg
   name gameboy_game
 
-  ; Define alias
-  alias c, counter
-  alias b, value
+  ; Define als
+  als c, counter
+  als b, value
   ld counter, $00
 
-  block if
-    alias hl, vram_value
-    alias a, counter
-    alias d, value
-    alias e, index
+  blk
+    als hl, vram_value
+    als a, counter
+    als d, value
+    als e, index
     ; ...
     ld [vram_value], $01
     add counter, value
-  end ; if
+  end ; cnd
 
-  alias c, index
-  block loop
+  als c, index
+  blk lp
     ; ...
     ld a, vram_value
     inc index
-    block if ; index, z
+    blk cnd ; index, z
       break
     end
-  end ; loop
+  end ; lp
 
   inc index_2
-  alias hl, pointer
+  als hl, pointer
   ld a, [pointer]
   ; ...
 
-end ; prog
+  ; Call function
+  invk my_function
+    input_1:  a
+    input_2:  index
+    output_1: [hl]
+    output_2: [de]
+
+end ; prg
+
+; Functions
+blk fn
+  name my_function
+  in input_1
+  in input_2
+  out output_1
+  out output_2
+
+  ld a, input_1
+  ld b, input_2
+  add a, b
+
+  ld output_1, a
+  sla a
+  ld output_2, a
+
+  ret
+end
