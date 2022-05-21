@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from ast import keyword
 from calendar import c
 import os
 import re
@@ -7,6 +8,7 @@ import argparse
 import sys
 
 from enum import Enum
+from turtle import clear
 from typing import List, Tuple
 
 # sys.tracebacklimit = 0
@@ -47,7 +49,7 @@ BLOCK_REGEX = r"^(\s)*" + KEYWORD_BLOCK + "(\s)*(" + KEYWORD_PROGRAM + "|" + \
                                      KEYWORD_CONDITION + "|" + \
                                      KEYWORD_DATA_STRUCT + ")?(\s)*$"
 NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*(\w)+(\s)*$"
-FUNCTION_ARG_REGEX = r"^(\s)*(" + KEYWORD_IN + "|" + KEYWORD_OUT + ")(\s)*(\w)+(\s)*$"
+FUNCTION_ARG_REGEX = r"^(\s)*(" + KEYWORD_IN + "|" + KEYWORD_OUT + ")(&)?(\s)*(\w)+(\s)*$"
 END_REGEX = r"^(\s)*" + KEYWORD_END +"(\s)*$"
 
 class Utils:
@@ -71,6 +73,12 @@ class Utils:
       flat_text += line
 
     return flat_text
+
+  @staticmethod
+  def split_tokens(text: str) -> List[str]:
+    tokens = re.split('\s+', text)
+    tokens = [x for x in tokens if len(x) != 0]
+    return tokens
 
 class LabelOperation(Enum):
   DEF_LABEL = "DEF_LABEL"
@@ -159,10 +167,14 @@ class Alias:
     return self._op
 
 class FunctionArgument:
-  def __init__(self, name:str, arg_type: FunctionArgumentType, pos:int) -> None:
+  def __init__(self,
+               name:str,
+               is_reference: bool,
+               arg_type: FunctionArgumentType, pos:int) -> None:
     self._name = name
     self._arg_type = arg_type
     self._pos = pos
+    self._is_reference = is_reference
 
   @property
   def name(self) -> str:
@@ -171,6 +183,10 @@ class FunctionArgument:
   @property
   def argument_type(self) -> FunctionArgumentType:
     return self._arg_type
+
+  @property
+  def is_reference(self) -> bool:
+    return self._is_reference
 
   @property
   def position(self) -> int:
@@ -192,7 +208,7 @@ class Function:
 
   @property
   def arguments(self) -> List[FunctionArgument]:
-    return self._block
+    return self._args
 
 class BlocksMappingPass:
   def __init__(self, input_file: str, source: List[str]):
@@ -223,8 +239,7 @@ class BlocksMappingPass:
 
   def _detect_block_type(self, line: str, idx: int) -> BlockType:
     # This function assumes a clear line as input (no comments)
-    tokens = re.split('\s+', line)
-    tokens = [x for x in tokens if len(x) != 0]
+    tokens = Utils.split_tokens(line)
 
     if len(tokens) == 1:
       return BlockType.GENERIC_BLOCK
@@ -349,8 +364,7 @@ class RegisterLabelPass:
     self._processed_source = []
     for idx, line in enumerate(self._raw_source):
       clear_line = Utils.extract_line_no_comments(line)
-      split_line = re.split('\s+', clear_line)
-      split_line = [x for x in split_line if len(x) != 0]
+      split_line = Utils.split_tokens(clear_line)
 
       line_text = line
       for _ in split_line:
@@ -399,6 +413,7 @@ class FunctionPass:
     self._processed_source = self._raw_source
     functions_blocks = self._find_functions()
     functions = self._process_function(functions_blocks)
+    self._emit_function_body(functions)
     return self._processed_source
 
   def _find_functions(self) -> List[Block]:
@@ -408,45 +423,85 @@ class FunctionPass:
     functions = []
 
     for block in func_blocks:
+      self._validate_function_body(block)
       name = self._extract_function_name(block)
-      args = self._extract_function_arguments(name, block)
+      args = self._extract_function_arguments(block)
+
       print(f"Function {name}")
       for arg in args:
-        print(f"\tArgunment[{arg.argument_type.value}] {arg.name} ({arg.position})")
+        print(f"\tArgument[{arg.argument_type.value}] {arg.name} ({arg.position}) (is reference: {arg.is_reference})")
+
       function = Function(name, block, args)
       functions.append(function)
     return functions
+
+  def _validate_function_body(self, blk: Block) -> None:
+    name_found = False
+    argument_list = False
+    function_body = False
+
+    for line in range(blk.start, blk.end):
+      clear_line = Utils.extract_line_no_comments(self._raw_source[line])
+
+      if re.match(NAME_REGEX, clear_line) and function_body == False:
+        if name_found == False:
+          name_found = True
+        else:
+          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                             f"{line + 1}: only one 'name' allowed per function body")
+      elif re.match(FUNCTION_ARG_REGEX, clear_line) and function_body == False:
+        if name_found == False:
+          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                             f"{line + 1} expected function 'name', found argument declaration '{clear_line.strip()}'")
+        else:
+          argument_list = True
+      else:
+          if name_found == True and argument_list == True and function_body == False:
+            function_body = True
+          else:
+            if re.match(NAME_REGEX, clear_line) or \
+               re.match(FUNCTION_ARG_REGEX, clear_line):
+              raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                                 f"{line + 1}: unexpected '{clear_line.strip()}' found")
 
   def _extract_function_name(self, blk: Block) -> str:
     name = ""
     for line in range(blk.start, blk.end):
       clear_line = Utils.extract_line_no_comments(self._raw_source[line])
       if (re.match(NAME_REGEX, clear_line)):
-        tokens = re.split('\s+', clear_line)
-        tokens = [x for x in tokens if len(x) != 0]
+        tokens = Utils.split_tokens(clear_line)
 
         if name != "":
           raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                                f"{line + 1}: unexpected keyword 'name' " +
                                f"in function '{name}'")
+        self._processed_source[line] = f"; {self._raw_source[line]}"
         name = tokens[1]
 
     return name
 
   def _extract_function_arguments(self,
-                                  fn_name: str,
                                   blk: Block) -> List[FunctionArgument]:
     args = []
     for line in range(blk.start, blk.end):
       clear_line = Utils.extract_line_no_comments(self._raw_source[line])
       if (re.match(FUNCTION_ARG_REGEX, clear_line)):
-        tokens = re.split('\s+', clear_line)
-        tokens = [x for x in tokens if len(x) != 0]
+        tokens = Utils.split_tokens(clear_line)
+        self._processed_source[line] = f"; {self._raw_source[line]}"
         args.append(FunctionArgument(tokens[1],
+                    True if '&' in tokens[0] else False,
                     (FunctionArgumentType.IN_ARG if "in" in tokens[0] else FunctionArgumentType.OUT_ARG),
                     line))
     return args
 
+  def _emit_function_body(self, functions: List[Function]) -> None:
+    for func in functions:
+      for line in range(func.block.start, func.block.end):
+        clear_line = Utils.extract_line_no_comments(self._processed_source[line])
+        if clear_line.strip() != "":
+          found_arguments = [x for x in func.arguments if x.name in clear_line]
+          if len(found_arguments) != 0:
+            print(f"Arguments found in {clear_line}")
 
 def main():
   parser = argparse.ArgumentParser(description='rgb pre-processor')

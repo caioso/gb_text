@@ -53,23 +53,29 @@ blk prg
   ; ...
 
   ; Call function
+  ; push them all
   invk my_function
     input_1:  a
-    input_2:  index
-    output_1: [hl]
-    output_2: [de]
+    input_2:  $0033
+    output_1: [de]
+    output_2: hl
 
 end ; prg
 
 ; Functions
 blk fn
   name my_function
-  in input_1
-  in input_2
-  out output_1
-  out output_2
+  in input_1    ; sp - 8
+  in input_2    ; sp - 6
+  out output_1  ; sp - 4
+  out output_2  ; sp - 2
 
+  ; ld hl, sp - 8
+  ; ld a, [hl]
   ld a, input_1
+
+  ; ld hl, sp - 6
+  ; ld b, [hl]
   ld b, input_2
   add a, b
 

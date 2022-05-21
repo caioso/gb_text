@@ -20,6 +20,7 @@ section "start", rom0[$0100]
 
   ; Main program
 fn_main:
+  ld hl, $0011
   nop
   di              ; Disable interrupts
   ld sp, $FFFF    ; Set stack to the end of RAM
