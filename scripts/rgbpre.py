@@ -28,12 +28,14 @@ KEYWORD_BREAK = "brk"
 
 # Progam
 KEYWORD_PROGRAM = "prg"
+KEYWORD_JUMP = "jp"
+KEYWORD_JUMP_RELATIVE = "jr"
 
 # Functions
 KEYWORD_FUNCTION = "fn"
-KEYWORD_IN = "in"
-KEYWORD_OUT = "out"
-KEYWORD_INVOKE = "invk"
+KEYWORD_CALL = "call"
+KEYWORD_RETURN = "ret"
+KEYWORD_RETURN_I = "reti"
 
 # Conditions
 KEYWORD_CONDITION = "cnd"
@@ -49,7 +51,6 @@ BLOCK_REGEX = r"^(\s)*" + KEYWORD_BLOCK + "(\s)*(" + KEYWORD_PROGRAM + "|" + \
                                      KEYWORD_CONDITION + "|" + \
                                      KEYWORD_DATA_STRUCT + ")?(\s)*$"
 NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*(\w)+(\s)*$"
-FUNCTION_ARG_REGEX = r"^(\s)*(" + KEYWORD_IN + "|" + KEYWORD_OUT + ")(&)?(\s)*(\w)+(\s)*$"
 END_REGEX = r"^(\s)*" + KEYWORD_END +"(\s)*$"
 
 class Utils:
@@ -169,8 +170,7 @@ class Alias:
 class FunctionArgument:
   def __init__(self,
                name:str,
-               is_reference: bool,
-               arg_type: FunctionArgumentType, pos:int) -> None:
+               is_reference: bool) -> None:
     self._name = name
     self._arg_type = arg_type
     self._pos = pos
@@ -181,10 +181,6 @@ class FunctionArgument:
     return self._name
 
   @property
-  def argument_type(self) -> FunctionArgumentType:
-    return self._arg_type
-
-  @property
   def is_reference(self) -> bool:
     return self._is_reference
 
@@ -193,10 +189,10 @@ class FunctionArgument:
     return self._pos
 
 class Function:
-  def __init__(self, name: str, block: Block, args: List[FunctionArgument]):
+  def __init__(self, name: str, block: Block):
     self._name = name
     self._block = block
-    self._args = args
+    self._label = f"fn__{self._name}"
 
   @property
   def name(self) -> str:
@@ -207,8 +203,8 @@ class Function:
     return self._block
 
   @property
-  def arguments(self) -> List[FunctionArgument]:
-    return self._args
+  def label(self) -> str:
+    return self._label
 
 class BlocksMappingPass:
   def __init__(self, input_file: str, source: List[str]):
@@ -414,6 +410,8 @@ class FunctionPass:
     functions_blocks = self._find_functions()
     functions = self._process_function(functions_blocks)
     self._emit_function_body(functions)
+    self._correct_calls(functions)
+    self._issue_warnings(functions)
     return self._processed_source
 
   def _find_functions(self) -> List[Block]:
@@ -425,19 +423,13 @@ class FunctionPass:
     for block in func_blocks:
       self._validate_function_body(block)
       name = self._extract_function_name(block)
-      args = self._extract_function_arguments(block)
 
-      print(f"Function {name}")
-      for arg in args:
-        print(f"\tArgument[{arg.argument_type.value}] {arg.name} ({arg.position}) (is reference: {arg.is_reference})")
-
-      function = Function(name, block, args)
+      function = Function(name, block)
       functions.append(function)
     return functions
 
   def _validate_function_body(self, blk: Block) -> None:
     name_found = False
-    argument_list = False
     function_body = False
 
     for line in range(blk.start, blk.end):
@@ -449,18 +441,11 @@ class FunctionPass:
         else:
           raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                              f"{line + 1}: only one 'name' allowed per function body")
-      elif re.match(FUNCTION_ARG_REGEX, clear_line) and function_body == False:
-        if name_found == False:
-          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                             f"{line + 1} expected function 'name', found argument declaration '{clear_line.strip()}'")
-        else:
-          argument_list = True
       else:
-          if name_found == True and argument_list == True and function_body == False:
+          if name_found == True and function_body == False:
             function_body = True
           else:
-            if re.match(NAME_REGEX, clear_line) or \
-               re.match(FUNCTION_ARG_REGEX, clear_line):
+            if re.match(NAME_REGEX, clear_line):
               raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                                  f"{line + 1}: unexpected '{clear_line.strip()}' found")
 
@@ -480,28 +465,43 @@ class FunctionPass:
 
     return name
 
-  def _extract_function_arguments(self,
-                                  blk: Block) -> List[FunctionArgument]:
-    args = []
-    for line in range(blk.start, blk.end):
-      clear_line = Utils.extract_line_no_comments(self._raw_source[line])
-      if (re.match(FUNCTION_ARG_REGEX, clear_line)):
-        tokens = Utils.split_tokens(clear_line)
-        self._processed_source[line] = f"; {self._raw_source[line]}"
-        args.append(FunctionArgument(tokens[1],
-                    True if '&' in tokens[0] else False,
-                    (FunctionArgumentType.IN_ARG if "in" in tokens[0] else FunctionArgumentType.OUT_ARG),
-                    line))
-    return args
-
   def _emit_function_body(self, functions: List[Function]) -> None:
     for func in functions:
+      self._processed_source[func.block.start] =\
+        f"{func.label}: {self._processed_source[func.block.start]}"
+
+  def _correct_calls(self, functions: List[Function]) -> None:
+    for idx, line in enumerate(self._processed_source):
+      clear_line = Utils.extract_line_no_comments(line)
+      tokens = Utils.split_tokens(clear_line)
+      if KEYWORD_CALL in tokens:
+        for func in functions:
+          if func.name in tokens:
+            self._processed_source[idx] = line.replace(func.name, func.label)
+
+  def _issue_warnings(self, functions) -> None:
+    for func in functions:
+      has_return = False
       for line in range(func.block.start, func.block.end):
-        clear_line = Utils.extract_line_no_comments(self._processed_source[line])
-        if clear_line.strip() != "":
-          found_arguments = [x for x in func.arguments if x.name in clear_line]
-          if len(found_arguments) != 0:
-            print(f"Arguments found in {clear_line}")
+        clear_line = Utils.extract_line_no_comments(self._raw_source[line])
+        tokens = Utils.split_tokens(clear_line)
+        if KEYWORD_RETURN in tokens or \
+           KEYWORD_RETURN_I in tokens:
+           has_return = True
+
+      if has_return != True:
+         print(f"Warning: {os.path.basename(self._input_file)} line " +
+               f"{line + 1}: function '{func.name}' expected to have a return point ('ret'/'reti')")
+
+    for idx, line in enumerate(self._processed_source):
+      clear_line = Utils.extract_line_no_comments(line)
+      tokens = Utils.split_tokens(clear_line)
+      if KEYWORD_JUMP in tokens or \
+         KEYWORD_JUMP_RELATIVE in tokens:
+        for func in functions:
+          if func.name in tokens:
+            print(f"Warning: {os.path.basename(self._input_file)} line " +
+                  f"{idx + 1}: branching to function '{func.name}' without using 'call'")
 
 def main():
   parser = argparse.ArgumentParser(description='rgb pre-processor')

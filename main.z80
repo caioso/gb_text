@@ -199,10 +199,10 @@ blk
   als c, outer_counter
   als d, x_movement
   als e, y_movement
-.wait_for_vblank:
-  ld a, [rLY]     ; Line Register (Y)
-  cp 145          ; Check if current line is 145
-  jr nz, .wait_for_vblank
+
+  ; Wait for vblank
+  call wait_until_vblank
+
   inc outer_counter
   ld a, outer_counter
   cp $30
@@ -218,6 +218,15 @@ blk
   ret
 end
 
+blk fn
+  name wait_until_vblank
+
+.wait_for_vblank:
+  ld a, [rLY]     ; Line Register (Y)
+  cp 145          ; Check if current line is 145
+  jr nz, .wait_for_vblank
+  ret
+end
 
 fn_switch_screen_off:
   ld a, [rLCDC]   ; LCD Control register

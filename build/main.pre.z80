@@ -20,7 +20,6 @@ section "start", rom0[$0100]
 
   ; Main program
 fn_main:
-  ld hl, $0011
   nop
   di              ; Disable interrupts
   ld sp, $FFFF    ; Set stack to the end of RAM
@@ -200,10 +199,10 @@ fn_main_loop_bg_update:
 ;   als c, outer_counter
 ;   als d, x_movement
 ;   als e, y_movement
-.wait_for_vblank:
-  ld a, [rLY]     ; Line Register (Y)
-  cp 145          ; Check if current line is 145
-  jr nz, .wait_for_vblank
+
+  ; Wait for vblank
+  call fn__wait_until_vblank
+
   inc c
   ld a, c
   cp $30
@@ -219,6 +218,15 @@ fn_main_loop_bg_update:
   ret
 ; end
 
+fn__wait_until_vblank: ; blk fn
+;   name wait_until_vblank
+
+.wait_for_vblank:
+  ld a, [rLY]     ; Line Register (Y)
+  cp 145          ; Check if current line is 145
+  jr nz, .wait_for_vblank
+  ret
+; end
 
 fn_switch_screen_off:
   ld a, [rLCDC]   ; LCD Control register

@@ -53,35 +53,32 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
   ; ...
 
   ; Call function
-  ; push them all
-  invk my_function
-    input_1:  a
-    input_2:  $0033
-    output_1: [de]
-    output_2: hl
+  call wait_for_vblank # extern function
+  call fn__my_function # local function
 
 ; end ; prg
 
 ; Functions
-; blk fn
+fn__my_function: ; blk fn
 ;   name my_function
-;   in input_1    ; sp - 8
-;   in input_2    ; sp - 6
-;   out output_1  ; sp - 4
-;   out output_2  ; sp - 2
 
-  ; ld hl, sp - 8
-  ; ld a, [hl]
-  ld a, input_1
+;   als c, input_1
+;   als d, input_2
+;   als l, output_1
 
-  ; ld hl, sp - 6
-  ; ld b, [hl]
-  ld b, input_2
+  ld a, c
+
+  ld b, c
   add a, b
 
-  ld output_1, a
   sla a
-  ld output_2, a
+  ld l, a
 
+  ret
+; end
+fn__dummy_function: ; blk fn
+;   name dummy_function
+
+  nop
   ret
 ; end

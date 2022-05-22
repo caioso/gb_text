@@ -53,35 +53,32 @@ blk prg
   ; ...
 
   ; Call function
-  ; push them all
-  invk my_function
-    input_1:  a
-    input_2:  $0033
-    output_1: [de]
-    output_2: hl
+  call wait_for_vblank # extern function
+  call my_function # local function
 
 end ; prg
 
 ; Functions
 blk fn
   name my_function
-  in input_1    ; sp - 8
-  in input_2    ; sp - 6
-  out output_1  ; sp - 4
-  out output_2  ; sp - 2
 
-  ; ld hl, sp - 8
-  ; ld a, [hl]
+  als c, input_1
+  als d, input_2
+  als l, output_1
+
   ld a, input_1
 
-  ; ld hl, sp - 6
-  ; ld b, [hl]
-  ld b, input_2
+  ld b, input_1
   add a, b
 
-  ld output_1, a
   sla a
-  ld output_2, a
+  ld output_1, a
 
+  ret
+end
+blk fn
+  name dummy_function
+
+  nop
   ret
 end
