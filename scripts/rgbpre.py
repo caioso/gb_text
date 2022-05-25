@@ -38,7 +38,9 @@ KEYWORD_RETURN = "ret"
 KEYWORD_RETURN_I = "reti"
 
 # Conditions
-KEYWORD_CONDITION = "cnd"
+KEYWORD_IF = "if"
+KEYWORD_ELSE = "else"
+KEYWORD_CND = "cnd"
 
 # Structs
 KEYWORD_DATA_STRUCT = "ds"
@@ -48,10 +50,25 @@ ALIAS_REGEX = r"^(\s)*" + KEYWORD_ALIAS + "(\s)*(\w)+,(\s)*(\w)+(\s)*$"
 BLOCK_REGEX = r"^(\s)*" + KEYWORD_BLOCK + "(\s)*(" + KEYWORD_PROGRAM + "|" + \
                                      KEYWORD_LOOP + "|" + \
                                      KEYWORD_FUNCTION + "|" + \
-                                     KEYWORD_CONDITION + "|" + \
+                                     KEYWORD_IF + "|" + \
                                      KEYWORD_DATA_STRUCT + ")?(\s)*$"
 NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*(\w)+(\s)*$"
 END_REGEX = r"^(\s)*" + KEYWORD_END +"(\s)*$"
+CONDITION_REGEX = r"^(\s*)cnd(\s+)(\b(\w+)\b)(\s+)" + \
+                  r"(ge|gt|eq|ne|le|lt|\=\=|\!\=|\>|\<|\<\=|\>\=)(\s+)" + \
+                  r"\$?(\b(\w*)\b)(\s+)(and|or)?(\s*)$"
+CONDITIONAL_OPERATORS = ["ge", "gt", "eq", "ne",
+                         "le", "lt", "==", "!=",
+                         ">" , "<" , ">=", "<="]
+BOOLEAN_OPERATORS = ["and", "or"]
+
+TOKEN_REGISTER_A = ["a", "A"]
+TOKEN_REGISTER_B = ["b", "B"]
+TOKEN_REGISTER_C = ["c", "C"]
+TOKEN_REGISTER_D = ["d", "D"]
+TOKEN_REGISTER_E = ["e", "E"]
+TOKEN_REGISTER_H = ["h", "H"]
+TOKEN_REGISTER_L = ["l", "L"]
 
 class Utils:
   @staticmethod
@@ -81,6 +98,14 @@ class Utils:
     tokens = [x for x in tokens if len(x) != 0]
     return tokens
 
+  @staticmethod
+  def get_alignment(line: str) -> str:
+    alignment = ""
+    for char in range(0,len(line) - 1):
+      if line[char:char+1].isspace():
+        alignment += line[char:char+1]
+    return alignment
+
 class LabelOperation(Enum):
   DEF_LABEL = "DEF_LABEL"
   UNDEF_LABEL = "UNDEF_LABEL"
@@ -91,7 +116,7 @@ class BlockMarkerType(Enum):
 
 class BlockType(Enum):
   GENERIC_BLOCK = "GENERIC_BLOCK"
-  CND_BLOCK = "CND_BLOCK"
+  IF_BLOCK = "IF_BLOCK"
   LP_BLOCK = "LP_BLOCK"
   FNC_BLOCK = "FNC_BLOCK"
   DS_BLOCK = "DS_BLOCK"
@@ -242,8 +267,8 @@ class BlocksMappingPass:
     elif len(tokens) == 2:
       if tokens[1] == KEYWORD_LOOP:
         return BlockType.LP_BLOCK
-      elif tokens[1] == KEYWORD_CONDITION:
-        return BlockType.CND_BLOCK
+      elif tokens[1] == KEYWORD_IF:
+        return BlockType.IF_BLOCK
       elif tokens[1] == KEYWORD_FUNCTION:
         return BlockType.FNC_BLOCK
       elif tokens[1] == KEYWORD_DATA_STRUCT:
@@ -453,7 +478,7 @@ class FunctionPass:
     name = ""
     for line in range(blk.start, blk.end):
       clear_line = Utils.extract_line_no_comments(self._raw_source[line])
-      if (re.match(NAME_REGEX, clear_line)):
+      if re.match(NAME_REGEX, clear_line):
         tokens = Utils.split_tokens(clear_line)
 
         if name != "":
@@ -503,6 +528,88 @@ class FunctionPass:
             print(f"Warning: {os.path.basename(self._input_file)} line " +
                   f"{idx + 1}: branching to function '{func.name}' without using 'call'")
 
+class ConditionPass:
+  def __init__(self, input_file: str, source: List[str], raw_source: List[str], blocks: List[Block]):
+    self._raw_source = raw_source
+    self._processed_source = source
+    self._input_file = input_file
+    self._blocks = blocks
+
+  def process(self) -> None:
+    conditional_blocks = self._find_conditional_blocks()
+    self._validate_conditional_blocks(conditional_blocks)
+    self._parse_conditions(conditional_blocks)
+
+    return self._processed_source
+
+  def _find_conditional_blocks(self) -> List[Block]:
+    return [x for x in self._blocks if x.type == BlockType.IF_BLOCK]
+
+  def _parse_conditions(self, conditional_blocks: List[Block]) -> None:
+    for block in conditional_blocks:
+      print(f"Condition block at {block.start + 1}")
+      for line in range(block.start, block.end):
+        clear_line = Utils.extract_line_no_comments(self._processed_source[line])
+        if re.match(CONDITION_REGEX, clear_line):
+          tokens = Utils.split_tokens(clear_line)
+          self._validate_condition(tokens, line)
+          converted_condition = self._convert_condition(tokens, clear_line)
+          print(converted_condition)
+
+  def _validate_conditional_blocks(self, conditional_blocks: List[Block]) -> None:
+    for block in conditional_blocks:
+      in_conditions_list = False
+      in_condition_body = False
+      skip_inner_block = []
+      for line in range(block.start + 1, block.end):
+        clear_line = Utils.extract_line_no_comments(self._raw_source[line])
+        if len(skip_inner_block) != 0:
+          if re.match(BLOCK_REGEX, clear_line):
+            skip_inner_block.append(1)
+          elif re.match(END_REGEX, clear_line):
+            skip_inner_block.pop()
+        else:
+          if in_conditions_list == False and \
+            in_condition_body == False and \
+            re.match(CONDITION_REGEX, clear_line):
+            in_conditions_list = True
+          elif in_conditions_list == True and \
+              in_condition_body == False and \
+              not re.match(CONDITION_REGEX, clear_line):
+            in_condition_body = True
+            in_conditions_list = False
+          elif in_condition_body == True and \
+               in_conditions_list == False and \
+               re.match(BLOCK_REGEX, clear_line):
+            skip_inner_block.append(1)
+          elif in_condition_body == True and \
+            re.match(CONDITION_REGEX, clear_line):
+            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                                  f"{line + 1}: unexpected 'cnd' found")
+
+  def _convert_condition(self, tokens: List[str], clear_line: str) -> str:
+    alignment = Utils.get_alignment(clear_line)
+    condition = f";{clear_line}\n"
+    if tokens[1] not in TOKEN_REGISTER_A:
+      condition += f"{alignment}ld a, {tokens[1]}\n"
+    else:
+      condition += f"{alignment}pop AF\n"
+      condition += f"{alignment}push AF\n"
+    condition += f"{alignment}cp {tokens[3]}\n"
+
+    return condition
+
+  def _validate_condition(self, tokens: List[str], line: int) -> None:
+    if tokens[0] != KEYWORD_CND:
+      raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                                 f"{line + 1}: expected 'cnd' found {tokens[0]}")
+    if tokens[2] not in CONDITIONAL_OPERATORS:
+      raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                                 f"{line + 1}: unexpected {tokens[2]} found")
+    if len(tokens) == 5 and tokens[4] not in BOOLEAN_OPERATORS:
+      raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                                 f"{line + 1}: unexpected {tokens[4]} found")
+
 def main():
   parser = argparse.ArgumentParser(description='rgb pre-processor')
   parser.add_argument('Input', metavar='input', type=str,
@@ -521,13 +628,15 @@ def main():
 
 def process_file(input_file: str, output_file: str) -> None:
   file_source = load_file_source(input_file)
-
+  raw_source = file_source.copy()
   blocks_detection_pass = BlocksMappingPass(input_file, file_source)
   file_source, blocks = blocks_detection_pass.process()
   reg_alias_pass = RegisterLabelPass(input_file, file_source, blocks)
   file_source = reg_alias_pass.process()
-  function_detection_pass = FunctionPass(input_file, file_source, blocks)
-  file_source = function_detection_pass.process()
+  functions_pass = FunctionPass(input_file, file_source, blocks)
+  file_source = functions_pass.process()
+  conditions_pass = ConditionPass(input_file, file_source, raw_source, blocks)
+  file_source = conditions_pass.process()
 
   final_source = file_source
   #save file

@@ -20,65 +20,93 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 
 ; Main program
 blk prg
-  name gameboy_game
+    name gameboy_game
 
-  ; Define als
-  als c, counter
-  als b, value
-  ld counter, $00
+    ; Define als
+    als c, counter
+    als b, value
+    ld counter, $00
 
-  blk
-    als hl, vram_value
-    als a, counter
-    als d, value
-    als e, index
+    blk
+        als hl, vram_value
+        als a, counter
+        als d, value
+        als e, index
+        ; ...
+        ld [vram_value], $01
+        add counter, value
+    end ; cnd
+
+    als c, index
+    blk lp
+        ; ...
+        ld a, vram_value
+        inc index
+        blk if ; index, z
+            cnd index eq 100
+            break
+        end
+    end ; lp
+
+    inc index_2
+    als hl, pointer
+    ld a, [pointer]
     ; ...
-    ld [vram_value], $01
-    add counter, value
-  end ; cnd
 
-  als c, index
-  blk lp
-    ; ...
-    ld a, vram_value
-    inc index
-    blk cnd ; index, z
-      break
-    end
-  end ; lp
+    ; Call function
+    call wait_for_vblank # extern function
 
-  inc index_2
-  als hl, pointer
-  ld a, [pointer]
-  ; ...
-
-  ; Call function
-  call wait_for_vblank # extern function
-  call my_function # local function
+    ld c, $03
+    call is_bigger_than_16 # local function
 
 end ; prg
 
 ; Functions
 blk fn
-  name my_function
+    name my_function
 
-  als c, input_1
-  als d, input_2
-  als l, output_1
+    als c, input_1
+    als d, input_2
+    als l, output_1
 
-  ld a, input_1
+    ld a, input_1
+    ld b, input_1
+    add a, b
+    sla a
+    ld output_1, a
 
-  ld b, input_1
-  add a, b
-
-  sla a
-  ld output_1, a
-
-  ret
+    ret
 end
-blk fn
-  name dummy_function
 
-  nop
-  ret
+; Checks wether input argument is between 10 and 20
+; INPUT[c]: number to be checked
+; OUTPUT[d]: $01 if less than 16
+;            $02 otherwise
+blk fn
+    name is_bigger_than_16Í
+
+    als c, input
+    als d, return
+    als b, counter
+    ld input, $00
+    ld return, $00
+
+    ; Condition
+    blk if
+        cnd input    ge $10 and
+        cnd counter  eq $20 or
+        cnd a        ne $00
+        ld return, $01
+
+        blk if
+            cnd input >= $00 and
+            cnd input <= $10
+            ld return, $03
+        end
+
+    else
+        ld return, $02
+    end
+
+    ret
 end
