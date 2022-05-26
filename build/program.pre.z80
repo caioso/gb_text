@@ -93,14 +93,21 @@ fn__is_bigger_than_16Í: ; blk fn
 
     ; Condition
 ;     blk if
-        cnd c    ge $10 and
-        cnd b  eq $20 or
-        cnd a        ne $00
+        cnd c    eq $10     and
+        cnd b  ne $20     or
+        cnd a        lt $00     and
+        cnd b        le $33     or
+        cnd [MEM]    gt c       and
+        cnd $33      ge [MEM]
         ld d, $01
 
 ;         blk if
-            cnd c >= $00 and
-            cnd c <= $10
+            cnd c    == $10 &&
+            cnd b  != $20 ||
+            cnd a        <  $00 &&
+            cnd b        <= $33 ||
+            cnd [MEM]    > c   &&
+            cnd $33      >= [MEM]
             ld d, $03
 ;         end
 

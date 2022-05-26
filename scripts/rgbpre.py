@@ -54,14 +54,18 @@ BLOCK_REGEX = r"^(\s)*" + KEYWORD_BLOCK + "(\s)*(" + KEYWORD_PROGRAM + "|" + \
                                      KEYWORD_DATA_STRUCT + ")?(\s)*$"
 NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*(\w)+(\s)*$"
 END_REGEX = r"^(\s)*" + KEYWORD_END +"(\s)*$"
-CONDITION_REGEX = r"^(\s*)cnd(\s+)(\b(\w+)\b)(\s+)" + \
-                  r"(ge|gt|eq|ne|le|lt|\=\=|\!\=|\>|\<|\<\=|\>\=)(\s+)" + \
-                  r"\$?(\b(\w*)\b)(\s+)(and|or)?(\s*)$"
+CONDITION_REGEX = r"^(\s)*cnd(\s)+\$?((\[)?\b(\w)+\b(\])?)(\s)+(ge|gt|eq|ne|le|lt|\=\=|\!\=|\>|\<|\<\=|\>\=)(\s)+\$?((\[)?\b(\w)+\b(\])?)(\s)*(and|or|\&\&|\|\|)?(\s)*$"
+
 CONDITIONAL_OPERATORS = ["ge", "gt", "eq", "ne",
                          "le", "lt", "==", "!=",
                          ">" , "<" , ">=", "<="]
-BOOLEAN_OPERATORS = ["and", "or"]
-
+TOKEN_EQUAL = ["eq", "EQ", "=="]
+TOKEN_NOT_EQUAL = ["ne", "NE", "!="]
+TOKEN_LESS_THAN = ["lt", "LT", "<"]
+TOKEN_LESS_THAN_EQ_TO = ["le", "LE", "<="]
+TOKEN_GREATER_THAN = ["gt", "GT", ">"]
+TOKEN_GREATER_THAN_EQ_TO = ["ge", "GE", ">="]
+BOOLEAN_OPERATORS = ["and", "or", "&&", "||"]
 TOKEN_REGISTER_A = ["a", "A"]
 TOKEN_REGISTER_B = ["b", "B"]
 TOKEN_REGISTER_C = ["c", "C"]
@@ -197,8 +201,6 @@ class FunctionArgument:
                name:str,
                is_reference: bool) -> None:
     self._name = name
-    self._arg_type = arg_type
-    self._pos = pos
     self._is_reference = is_reference
 
   @property
@@ -317,7 +319,7 @@ class BlocksMappingPass:
 
     return blocks
 
-class RegisterLabelPass:
+class RegisterAliasPass:
   def __init__(self, input_file: str, source: List[str], blocks: List[Block]):
     self._raw_source = source
     self._input_file = input_file
@@ -560,6 +562,8 @@ class ConditionPass:
     for block in conditional_blocks:
       in_conditions_list = False
       in_condition_body = False
+      condition_list_start = 0
+      condition_list_end = 0
       skip_inner_block = []
       for line in range(block.start + 1, block.end):
         clear_line = Utils.extract_line_no_comments(self._raw_source[line])
@@ -573,11 +577,13 @@ class ConditionPass:
             in_condition_body == False and \
             re.match(CONDITION_REGEX, clear_line):
             in_conditions_list = True
+            condition_list_start = line
           elif in_conditions_list == True and \
               in_condition_body == False and \
               not re.match(CONDITION_REGEX, clear_line):
             in_condition_body = True
             in_conditions_list = False
+            condition_list_end = line - 1
           elif in_condition_body == True and \
                in_conditions_list == False and \
                re.match(BLOCK_REGEX, clear_line):
@@ -585,17 +591,56 @@ class ConditionPass:
           elif in_condition_body == True and \
             re.match(CONDITION_REGEX, clear_line):
             raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                                  f"{line + 1}: unexpected 'cnd' found")
+                               f"{line + 1}: unexpected 'cnd' found")
+
+      if abs(condition_list_end - condition_list_start) >= 2:
+        for line in range(condition_list_start, condition_list_end):
+          clear_line = Utils.extract_line_no_comments(self._raw_source[line])
+          tokens = Utils.split_tokens(clear_line)
+          print(f"Token {tokens[-1]}")
+          if tokens[-1] not in BOOLEAN_OPERATORS:
+            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                               f"{line + 1}: expected 'and' or 'or'")
+      # Check last condition
+      clear_line = Utils.extract_line_no_comments(self._raw_source[condition_list_end])
+      tokens = Utils.split_tokens(clear_line)
+      print(tokens)
+      if tokens[-1] in BOOLEAN_OPERATORS:
+          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                             f"{condition_list_end + 1}: unexpected '{tokens[-1]}'")
 
   def _convert_condition(self, tokens: List[str], clear_line: str) -> str:
+    # TODO: Conditional Code Emission is not correct
+    # Detect all memory & register labels
+    # Classify conditions
+    # Emit code accordingly
     alignment = Utils.get_alignment(clear_line)
-    condition = f";{clear_line}\n"
+    condition = f";{clear_line[:-1]}\n"
     if tokens[1] not in TOKEN_REGISTER_A:
       condition += f"{alignment}ld a, {tokens[1]}\n"
     else:
       condition += f"{alignment}pop AF\n"
       condition += f"{alignment}push AF\n"
-    condition += f"{alignment}cp {tokens[3]}\n"
+
+    if '[' not in tokens[3] and ']' not in tokens[3]:
+      condition += f"{alignment}cp {tokens[3]}\n"
+    else:
+      condition += f"{alignment}sub {tokens[3]}\n"
+
+    if tokens[2] in TOKEN_EQUAL:
+      condition += f"{alignment}jp z, <target>\n"
+    elif tokens[2] in TOKEN_NOT_EQUAL:
+      condition += f"{alignment}jp nz, <target>\n"
+    elif tokens[2] in TOKEN_LESS_THAN:
+      condition += f"{alignment}jp c, <target>\n"
+    elif tokens[2] in TOKEN_LESS_THAN_EQ_TO:
+      condition += f"{alignment}jp c, <target>\n"
+      condition += f"{alignment}jp z, <target>\n"
+    elif tokens[2] in TOKEN_GREATER_THAN:
+      condition += f"{alignment}jp nc, <target>\n"
+    elif tokens[2] in TOKEN_GREATER_THAN_EQ_TO:
+      condition += f"{alignment}jp nc, <target>\n"
+      condition += f"{alignment}jp nz, <target>\n"
 
     return condition
 
@@ -631,7 +676,7 @@ def process_file(input_file: str, output_file: str) -> None:
   raw_source = file_source.copy()
   blocks_detection_pass = BlocksMappingPass(input_file, file_source)
   file_source, blocks = blocks_detection_pass.process()
-  reg_alias_pass = RegisterLabelPass(input_file, file_source, blocks)
+  reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks)
   file_source = reg_alias_pass.process()
   functions_pass = FunctionPass(input_file, file_source, blocks)
   file_source = functions_pass.process()
