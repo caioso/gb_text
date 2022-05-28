@@ -45,6 +45,10 @@ KEYWORD_CND = "cnd"
 # Structs
 KEYWORD_DATA_STRUCT = "ds"
 
+# Assembler
+KEYWORD_DEF = "def"
+KEYWORD_EQU = "equ"
+
 # Regex Templates
 ALIAS_REGEX = r"^(\s)*" + KEYWORD_ALIAS + "(\s)*(\w)+,(\s)*(\w)+(\s)*$"
 BLOCK_REGEX = r"^(\s)*" + KEYWORD_BLOCK + "(\s)*(" + KEYWORD_PROGRAM + "|" + \
@@ -54,8 +58,11 @@ BLOCK_REGEX = r"^(\s)*" + KEYWORD_BLOCK + "(\s)*(" + KEYWORD_PROGRAM + "|" + \
                                      KEYWORD_DATA_STRUCT + ")?(\s)*$"
 NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*(\w)+(\s)*$"
 END_REGEX = r"^(\s)*" + KEYWORD_END +"(\s)*$"
-CONDITION_REGEX = r"^(\s)*cnd(\s)+\$?((\[)?\b(\w)+\b(\])?)(\s)+(ge|gt|eq|ne|le|lt|\=\=|\!\=|\>|\<|\<\=|\>\=)(\s)+\$?((\[)?\b(\w)+\b(\])?)(\s)*(and|or|\&\&|\|\|)?(\s)*$"
-
+CONDITION_REGEX = r"^(\s)*cnd(\s)+\$?((\[)?\b(\w)+\b(\])?)(\s)+" +\
+                  r"(ge|gt|eq|ne|le|lt|\=\=|\!\=|\>|\<|\<\=|\>\=)(\s)+" +\
+                  r"\$?((\[)?\b(\w)+\b(\])?)(\s)*(and|or|\&\&|\|\|)?(\s)*$"
+INCLUDE_REGEX = r"^(include)(\s)*\"((\w)+|(\/)*|(\w+)*|(.))+\"(\s)*$"
+MEMORY_ALIAS_REGEX = r"^(\s)*(DEF|def)?(_|\w)*(\s)+(EQU|equ)(\s)*"
 CONDITIONAL_OPERATORS = ["ge", "gt", "eq", "ne",
                          "le", "lt", "==", "!=",
                          ">" , "<" , ">=", "<="]
@@ -109,6 +116,34 @@ class Utils:
       if line[char:char+1].isspace():
         alignment += line[char:char+1]
     return alignment
+
+  @staticmethod
+  def load_file_source(file_path: str, include_path: List[str]) -> List[str]:
+    contents = []
+    os_path = ""
+    try:
+      for path in include_path:
+        os_path = os.path.abspath(file_path)
+        with open(os_path) as f:
+          contents = f.readlines()
+          break
+    except:
+      raise RuntimeError(f"Unable to open file {os_path}")
+
+    return contents
+
+  @staticmethod
+  def locate_file(include_path: str,
+                  cmd_include_path: List[str],
+                  source: str,
+                  line: int) -> str:
+    os_path = ""
+    for path in cmd_include_path:
+      os_path = os.path.join(os.path.abspath(path), include_path)
+      if os.path.exists(os_path):
+        return os_path
+
+    raise RuntimeError(f"Unable to locate file {os_path} found in '{source}' line {line}")
 
 class LabelOperation(Enum):
   DEF_LABEL = "DEF_LABEL"
@@ -232,6 +267,122 @@ class Function:
   @property
   def label(self) -> str:
     return self._label
+
+class MemoryAlias:
+  def __init__(self, alias_name: str, file_name: str, line: int):
+    self._alias_name = alias_name
+    self._file_name = file_name
+    self._line = line
+
+  @property
+  def alias_name(self) -> str:
+    return self._alias_name
+
+  @property
+  def file_name(self) -> str:
+    return self._file_name
+
+  @property
+  def line(self) -> int:
+    return self._line
+
+class FindIncludesPass:
+  def __init__(self, input_file: str, source: List[str], include_path: List[str]):
+    self._input_file = input_file
+    self._raw_source = source
+    self._cmd_include_path = include_path
+
+  def process(self) -> Tuple[List[str], List[MemoryAlias]]:
+    alias_list = []
+    top_level_source = Utils.locate_file(self._input_file,
+                                         self._cmd_include_path,
+                                         self._input_file,
+                                         1)
+    self._include_list = [top_level_source]
+
+    self._extract_includes(self._raw_source)
+    self._extract_memory_aliasses()
+
+    return [self._include_list, alias_list]
+
+  def _extract_memory_aliasses(self) -> None:
+    for file in self._include_list:
+      print(f"Find aliasses in {file}")
+
+      source = Utils.load_file_source(file, self._cmd_include_path)
+      for idx, line in enumerate(source):
+        clear_line = Utils.extract_line_no_comments(line)
+
+        if re.match(MEMORY_ALIAS_REGEX, clear_line):
+          tokens = Utils.split_tokens(line)
+
+          if tokens[0].upper() == KEYWORD_DEF:
+            print(f"Alias {tokens[1]} found at {file}:{idx}")
+          else:
+            print(f"Alias {tokens[0]} found at {file}:{idx}")
+
+
+  def _extract_includes(self, source : List[str]) -> None:
+    local_includes = []
+    for idx, line in enumerate(source):
+      clear_line = Utils.extract_line_no_comments(line)
+
+      if re.match(INCLUDE_REGEX, clear_line):
+        include_path = self._extract_included_path(clear_line)
+        os_included_path = Utils.locate_file(include_path,
+                                             self._cmd_include_path,
+                                             self._input_file,
+                                             idx)
+
+        if not self._path_already_exist(os_included_path):
+          self._include_list.append(os_included_path)
+          local_includes.append(os_included_path)
+
+    self._extract_sub_includes(local_includes)
+
+  def _extract_sub_includes(self, input_local_includes: List[str]) -> None:
+    if len(input_local_includes) != 0:
+      local_includes = []
+      for include in input_local_includes:
+        source = Utils.load_file_source(include, self._cmd_include_path)
+
+        for idx, line in enumerate(source):
+          clear_line = Utils.extract_line_no_comments(line)
+
+          if re.match(INCLUDE_REGEX, clear_line):
+            include_path = self._extract_included_path(clear_line)
+            os_included_path = Utils.locate_file(include_path,
+                                                  self._cmd_include_path,
+                                                  self._input_file,
+                                                  idx)
+
+            if not self._path_already_exist(os_included_path):
+              self._include_list.append(os_included_path)
+              local_includes.append(os_included_path)
+
+      self._extract_sub_includes(local_includes)
+
+  def _path_already_exist(self, path: str) -> bool:
+    for include_path in self._include_list:
+      if (os.path.samefile(path, include_path)):
+        return True
+
+    return False
+
+  def _extract_included_path(self, clear_line: str) -> str:
+    include_path = ""
+    path_started = False
+    for char in clear_line:
+      if path_started == False and char == '\"':
+        path_started = True
+        continue
+      elif path_started == True and char == '\"':
+        break
+
+      if path_started == True:
+        include_path += char
+
+    return include_path
 
 class BlocksMappingPass:
   def __init__(self, input_file: str, source: List[str]):
@@ -657,23 +808,30 @@ class ConditionPass:
 
 def main():
   parser = argparse.ArgumentParser(description='rgb pre-processor')
-  parser.add_argument('Input', metavar='input', type=str,
-                      help='Input file name')
-  parser.add_argument('Output', metavar='output', type=str,
-                      help='Output file name')
+  parser.add_argument('-i', '--input', type=str,
+                      help='Input file name', nargs=1)
+  parser.add_argument('-o', '--output', type=str,
+                      help='Output file name', nargs=1)
+  parser.add_argument('-I', '--include', type=str,
+                      help='Include directory', nargs="*")
   args = parser.parse_args()
 
   # Acquire arguments
-  input_path = args.Input
-  output_path = args.Output
+  input_path = args.input[0]
+  output_path = args.output[0]
+  include_path = args.include
+  include_path.append(os.getcwd())
+  include_path = list(set(include_path))
 
   # process file
-  process_file(input_path, output_path)
+  process_file(input_path, output_path, include_path)
 
 
-def process_file(input_file: str, output_file: str) -> None:
-  file_source = load_file_source(input_file)
+def process_file(input_file: str, output_file: str, include_path: List[str]) -> None:
+  file_source = Utils.load_file_source(input_file, include_path)
   raw_source = file_source.copy()
+  included_file_list = FindIncludesPass(input_file, file_source, include_path)
+  included_files, memory_aliasses = included_file_list.process()
   blocks_detection_pass = BlocksMappingPass(input_file, file_source)
   file_source, blocks = blocks_detection_pass.process()
   reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks)
@@ -687,16 +845,6 @@ def process_file(input_file: str, output_file: str) -> None:
   #save file
   with open(output_file, 'w') as f:
     f.write(Utils.get_flat_text(final_source))
-
-def load_file_source(file_path: str) -> List[str]:
-  contents = []
-  try:
-    with open(file_path) as f:
-      contents = f.readlines()
-  except:
-    raise RuntimeError(f"Unable to open file {file_path}")
-
-  return contents
 
 if __name__ == "__main__":
     main()

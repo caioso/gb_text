@@ -5,6 +5,7 @@
 
 ; If all of these are already defined, don't do it again.
 
+
         IF      !DEF(HARDWARE_INC)
 HARDWARE_INC  SET  1
 
@@ -654,7 +655,7 @@ rOBPI	EQU	$FF6A	; Sprite Palette Index
 rOBPD	EQU	$FF6B	; Sprite Palette Data
 
 ; VRAM Banks
-rVRBS	EQU	$FF4F	; VRAM Bank Select 
+rVRBS	EQU	$FF4F	; VRAM Bank Select
 VRB0	EQU	$00	; VRAM Bank 0
 VRB1	EQU	$01	; VRAM Bank 1
 
@@ -679,7 +680,7 @@ GBCMA_BNK0	EQU	%00000000	; Bank 0
 GBCMA_BNK1	EQU	%00001000	; Bank 1
 GBCMA_FLPH	EQU	%00100000	; Flip Horizontally
 GBCMA_FLPV	EQU	%01000000	; Flip Vertically
-GBCMA_BKGP	EQU	%10000000	; Background Priority	
+GBCMA_BKGP	EQU	%10000000	; Background Priority
 
 ; VRAM DMA
 rDMA1		EQU	$FF51		; DMA Source High

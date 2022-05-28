@@ -23,10 +23,6 @@ fn_main:
   nop
   di              ; Disable interrupts
 
-  ld a, 2
-  sub [_OAMRAM]
-  jp nz, fn_main
-
   ld sp, $FFFF    ; Set stack to the end of RAM
   ld a, %11100100 ; Load color palette
                   ; Darkest, 11, 10, 01, 00 Lightest
