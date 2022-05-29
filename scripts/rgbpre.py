@@ -50,7 +50,7 @@ KEYWORD_DEF = "def"
 KEYWORD_EQU = "equ"
 
 # Regex Templates
-ALIAS_REGEX = r"^(\s)*" + KEYWORD_ALIAS + "(\s)*(\w)+,(\s)*(\w)+(\s)*$"
+ALIAS_REGEX = r"^(\s)*" + KEYWORD_ALIAS + "(\s)*(\w)+,(.)*$"
 BLOCK_REGEX = r"^(\s)*" + KEYWORD_BLOCK + "(\s)*(" + KEYWORD_PROGRAM + "|" + \
                                      KEYWORD_LOOP + "|" + \
                                      KEYWORD_FUNCTION + "|" + \
@@ -63,6 +63,9 @@ CONDITION_REGEX = r"^(\s)*cnd(\s)+\$?((\[)?\b(\w)+\b(\])?)(\s)+" +\
                   r"\$?((\[)?\b(\w)+\b(\])?)(\s)*(and|or|\&\&|\|\|)?(\s)*$"
 INCLUDE_REGEX = r"^(include)(\s)*\"((\w)+|(\/)*|(\w+)*|(.))+\"(\s)*$"
 MEMORY_ALIAS_REGEX = r"^(\s)*(DEF|def)?(_|\w)*(\s)+(EQU|equ)(\s)*"
+MACRO_REGEX = r"^(\s)*((_|(\w)*))(\s)*(:)(\s)*(macro|MACRO)(\s)*$"
+LABEL_REGEX = r"^(\s)*(\.)?((_|(\w)*))(\s)*(:)(\s)*$"
+IDENTIFIER_NAME_REGEX = r"^[a-zA-Z_$][a-zA-Z_$0-9]*$"
 CONDITIONAL_OPERATORS = ["ge", "gt", "eq", "ne",
                          "le", "lt", "==", "!=",
                          ">" , "<" , ">=", "<="]
@@ -80,70 +83,48 @@ TOKEN_REGISTER_D = ["d", "D"]
 TOKEN_REGISTER_E = ["e", "E"]
 TOKEN_REGISTER_H = ["h", "H"]
 TOKEN_REGISTER_L = ["l", "L"]
-
-class Utils:
-  @staticmethod
-  def extract_line_no_comments(line: str) -> str:
-    index = line.find(';')
-    return line if index == -1 else line[:index]
-
-  @staticmethod
-  def extract_code_fragment_no_comment(lines: List[str], start: int, end: int) -> str:
-    fragment = ""
-
-    for line in range(start, end):
-      fragment += Utils.extract_line_no_comments(lines[line])
-    return fragment
-
-  @staticmethod
-  def get_flat_text(text: List[str]) -> str:
-    flat_text = ""
-    for line in text:
-      flat_text += line
-
-    return flat_text
-
-  @staticmethod
-  def split_tokens(text: str) -> List[str]:
-    tokens = re.split('\s+', text)
-    tokens = [x for x in tokens if len(x) != 0]
-    return tokens
-
-  @staticmethod
-  def get_alignment(line: str) -> str:
-    alignment = ""
-    for char in range(0,len(line) - 1):
-      if line[char:char+1].isspace():
-        alignment += line[char:char+1]
-    return alignment
-
-  @staticmethod
-  def load_file_source(file_path: str, include_path: List[str]) -> List[str]:
-    contents = []
-    os_path = ""
-    try:
-      for path in include_path:
-        os_path = os.path.abspath(file_path)
-        with open(os_path) as f:
-          contents = f.readlines()
-          break
-    except:
-      raise RuntimeError(f"Unable to open file {os_path}")
-
-    return contents
-
-  @staticmethod
-  def locate_file(include_path: str,
-                  cmd_include_path: List[str],
-                  source: str,
-                  line: int) -> str:
-    os_path = ""
-    for path in cmd_include_path:
-      os_path = os.path.join(os.path.abspath(path), include_path)
-      if os.path.exists(os_path):
-        return os_path
-
-    raise RuntimeError(f"Unable to locate file {os_path} found in '{source}' line {line}")
+KEYWORDS = ["DEF", "BANK", "ALIGN", "SIZEOF" , "STARTOF", "SIN" , "COS" , "TAN",
+            "ASIN" , "ACOS" , "ATAN" , "ATAN2", "FDIV", "FMUL", "POW", "LOG",
+            "ROUND", "CEIL" , "FLOOR", "HIGH" , "LOW", "ISCONST", "STRCMP",
+            "STRIN", "STRRIN", "STRSUB", "STRLEN", "STRCAT", "STRUPR",
+            "STRLWR", "STRRPL", "STRFMT", "CHARLEN", "CHARSUB", "EQU", "SET",
+            "=", "EQUS", "+=", "-=", "*=", "/=" , "%=", "|=", "^=", "&=", "<<=",
+            ">>=", "INCLUDE", "PRINT" , "PRINTLN", "IF", "ELIF" , "ELSE" ,
+            "ENDC", "EXPORT", "DB" , "DS" , "DW" , "DL", "SECTION , FRAGMENT",
+            "RB , RW", "MACRO", "ENDM", "RSRESET" , "RSSET", "UNION" , "NEXTU" ,
+            "ENDU", "INCBIN" , "REPT" , "FOR", "CHARMAP", "NEWCHARMAP",
+            "SETCHARMAP", "PUSHC", "POPC", "SHIFT", "ENDR", "BREAK",
+            "LOAD", "ENDL", "FAIL", "WARN", "FATAL", "ASSERT",  "STATIC_ASSERT",
+            "PURGE", "REDEF", "POPS", "PUSHS", "POPO", "PUSHO", "OPT", "ROM0" ,
+            "ROMX", "WRAM0" , "WRAMX" , "HRAM", "VRAM" , "SRAM" , "OAM", "ADC" ,
+            "ADD" , "AND", "BIT" , "BIT", "BIT", "CALL" , "CCF" , "CP" , "CPL",
+            "DAA" , "DEC" , "DI", "EI", "HALT", "INC", "JP" , "JR", "LD", "LDI",
+            "LDD", "LDH", "NOP", "OR", "POP" , "PUSH", "RES" , "RET" , "RETI" ,
+            "RST", "RL" , "RLA" , "RLC" , "RLCA", "RR" , "RRA" , "RRC" , "RRCA",
+            "SBC" , "SCF" , "STOP", "SLA", "SRA", "SRL" , "SUB", "SWAP", "XOR",
+            "A", "B" , "C", "D" , "E", "H" , "L", "AF" , "BC" , "DE" , "SP",
+            "HL" ,  "HLD/HL-" ,  "HLI/HL+", "NZ" , "Z", "NC", "def", "bank",
+            "align", "sizeof" , "startof", "sin" , "cos" , "tan", "asin" ,
+            "acos" , "atan" , "atan2", "fdiv", "fmul", "pow", "log", "round",
+            "ceil" , "floor", "high" , "low", "isconst", "strcmp", "strin",
+            "strrin", "strsub", "strlen", "strcat", "strupr", "strlwr",
+            "strrpl", "strfmt", "charlen", "charsub", "equ", "set", "=",
+            "equs", "+=", "-=", "*=", "/=" , "%=", "|=", "^=", "&=", "<<=",
+            ">>=", "include", "print" , "println", "if", "elif" , "else" ,
+            "endc", "export", "db" , "ds" , "dw" , "dl", "section , fragment",
+            "rb , rw", "macro", "endm", "rsreset" , "rsset", "union" , "nextu" ,
+            "endu", "incbin" , "rept" , "for", "charmap", "newcharmap",
+            "setcharmap", "pushc", "popc", "shift", "endr", "break", "load",
+            "endl", "fail", "warn", "fatal", "assert",  "static_assert",
+            "purge", "redef", "pops", "pushs", "popo", "pusho", "opt", "rom0" ,
+            "romx", "wram0" , "wramx" , "hram", "vram" , "sram" , "oam", "adc" ,
+            "add" , "and", "bit" , "bit", "bit", "call" , "ccf" , "cp" , "cpl",
+            "daa" , "dec" , "di", "ei", "halt", "inc", "jp" , "jr", "ld", "ldi",
+            "ldd", "ldh", "nop", "or", "pop" , "push", "res" , "ret" , "reti" ,
+            "rst", "rl" , "rla" , "rlc" , "rlca", "rr" , "rra" , "rrc" , "rrca",
+            "sbc" , "scf" , "stop", "sla", "sra", "srl" , "sub", "swap", "xor",
+            "a", "b" , "c", "d" , "e", "h" , "l", "af" , "bc" , "de" , "sp",
+            "hl" ,  "hld/hl-" ,  "hli/hl+", "nz" , "z", "nc"]
 
 class LabelOperation(Enum):
   DEF_LABEL = "DEF_LABEL"
@@ -165,6 +146,34 @@ class BlockType(Enum):
 class FunctionArgumentType(Enum):
   IN_ARG = "IN_ARG"
   OUT_ARG = "OUT_ARG"
+
+class IdentifierType(Enum):
+  MEMORY_ALIAS = "MEMORY_ALIAS"
+  MACRO = "MACRO"
+  LABEL = "LABEL"
+
+class AssemblerIdentifier:
+  def __init__(self, identifier_name: str, file_name: str, line: int, type: IdentifierType):
+    self._identifier_name = identifier_name
+    self._file_name = file_name
+    self._line = line
+    self._type = type
+
+  @property
+  def identifier_name(self) -> str:
+    return self._identifier_name
+
+  @property
+  def file_name(self) -> str:
+    return self._file_name
+
+  @property
+  def line(self) -> int:
+    return self._line
+
+  @property
+  def type(self) -> IdentifierType:
+    return self._type
 
 class Block:
   def __init__(self, start: int, end: int,  type: BlockType, id: int):
@@ -268,47 +277,111 @@ class Function:
   def label(self) -> str:
     return self._label
 
-class MemoryAlias:
-  def __init__(self, alias_name: str, file_name: str, line: int):
-    self._alias_name = alias_name
-    self._file_name = file_name
-    self._line = line
+class Utils:
+  @staticmethod
+  def extract_line_no_comments(line: str) -> str:
+    index = line.find(';')
+    return line if index == -1 else line[:index]
 
-  @property
-  def alias_name(self) -> str:
-    return self._alias_name
+  @staticmethod
+  def extract_code_fragment_no_comment(lines: List[str], start: int, end: int) -> str:
+    fragment = ""
 
-  @property
-  def file_name(self) -> str:
-    return self._file_name
+    for line in range(start, end):
+      fragment += Utils.extract_line_no_comments(lines[line])
+    return fragment
 
-  @property
-  def line(self) -> int:
-    return self._line
+  @staticmethod
+  def get_flat_text(text: List[str]) -> str:
+    flat_text = ""
+    for line in text:
+      flat_text += line
+
+    return flat_text
+
+  @staticmethod
+  def split_tokens(text: str) -> List[str]:
+    tokens = re.split('\s+', text)
+    tokens = [x for x in tokens if len(x) != 0]
+    return tokens
+
+  @staticmethod
+  def get_alignment(line: str) -> str:
+    alignment = ""
+    for char in range(0,len(line) - 1):
+      if line[char:char+1].isspace():
+        alignment += line[char:char+1]
+    return alignment
+
+  @staticmethod
+  def load_file_source(file_path: str, include_path: List[str]) -> List[str]:
+    contents = []
+    os_path = ""
+    try:
+      for path in include_path:
+        os_path = os.path.abspath(file_path)
+        with open(os_path) as f:
+          contents = f.readlines()
+          break
+    except:
+      raise RuntimeError(f"Unable to open file {os_path}")
+
+    return contents
+
+  @staticmethod
+  def locate_file(include_path: str,
+                  cmd_include_path: List[str],
+                  source: str,
+                  line: int) -> str:
+    os_path = ""
+    for path in cmd_include_path:
+      os_path = os.path.join(os.path.abspath(path), include_path)
+      if os.path.exists(os_path):
+        return os_path
+
+    raise RuntimeError(f"Unable to locate file {os_path} found in '{source}' line {line}")
+
+  @staticmethod
+  def is_identifier_unique(identifier_list: List[AssemblerIdentifier],
+                           target_identifier: str) -> bool:
+    for id in identifier_list:
+      if id.identifier_name == target_identifier:
+        return False
+    return True
+
+  @staticmethod
+  def is_valid_identifier(identifier: str) -> bool:
+    if identifier in KEYWORDS:
+      return False
+    elif not re.match(IDENTIFIER_NAME_REGEX, identifier):
+      return False
+
+    return True
 
 class FindIncludesPass:
   def __init__(self, input_file: str, source: List[str], include_path: List[str]):
     self._input_file = input_file
     self._raw_source = source
     self._cmd_include_path = include_path
+    self._identifier_list = []
 
-  def process(self) -> Tuple[List[str], List[MemoryAlias]]:
-    alias_list = []
+  def process(self) -> Tuple[List[str], List[AssemblerIdentifier]]:
     top_level_source = Utils.locate_file(self._input_file,
                                          self._cmd_include_path,
                                          self._input_file,
                                          1)
+    print(f"Top level include {top_level_source}")
     self._include_list = [top_level_source]
 
     self._extract_includes(self._raw_source)
     self._extract_memory_aliasses()
+    self._extract_macros()
+    self._extract_labels()
 
-    return [self._include_list, alias_list]
+    return [self._include_list, self._identifier_list]
 
   def _extract_memory_aliasses(self) -> None:
     for file in self._include_list:
-      print(f"Find aliasses in {file}")
-
       source = Utils.load_file_source(file, self._cmd_include_path)
       for idx, line in enumerate(source):
         clear_line = Utils.extract_line_no_comments(line)
@@ -317,10 +390,56 @@ class FindIncludesPass:
           tokens = Utils.split_tokens(line)
 
           if tokens[0].upper() == KEYWORD_DEF:
-            print(f"Alias {tokens[1]} found at {file}:{idx}")
+            self._identifier_list.append(AssemblerIdentifier(tokens[1],
+                                                        file,
+                                                        idx,
+                                                        IdentifierType.MEMORY_ALIAS))
           else:
-            print(f"Alias {tokens[0]} found at {file}:{idx}")
+            self._identifier_list.append(AssemblerIdentifier(tokens[0],
+                                                        file,
+                                                        idx,
+                                                        IdentifierType.MEMORY_ALIAS))
 
+  def _extract_macros(self) -> None:
+    for file in self._include_list:
+      source = Utils.load_file_source(file, self._cmd_include_path)
+      for idx, line in enumerate(source):
+        clear_line = Utils.extract_line_no_comments(line)
+
+        if re.match(MACRO_REGEX, clear_line):
+          tokens = Utils.split_tokens(line)
+
+          if ':' in tokens[0]:
+            id = tokens[0].split(':')[0]
+            self._identifier_list.append(AssemblerIdentifier(id,
+                                                            file,
+                                                            idx,
+                                                            IdentifierType.MACRO))
+          else:
+            self._identifier_list.append(AssemblerIdentifier(tokens[0],
+                                                            file,
+                                                          idx,
+                                                          IdentifierType.MACRO))
+
+  def _extract_labels(self) -> None:
+    for file in self._include_list:
+      source = Utils.load_file_source(file, self._cmd_include_path)
+      for idx, line in enumerate(source):
+        clear_line = Utils.extract_line_no_comments(line)
+
+        if re.match(LABEL_REGEX, clear_line):
+          tokens = Utils.split_tokens(line)
+
+          id = tokens[0]
+          if ':' in id:
+            id = id.split(':')[0]
+          if '.' in id:
+            id = id.split('.')[1]
+
+          self._identifier_list.append(AssemblerIdentifier(id,
+                                                           file,
+                                                           idx,
+                                                           IdentifierType.LABEL))
 
   def _extract_includes(self, source : List[str]) -> None:
     local_includes = []
@@ -471,10 +590,15 @@ class BlocksMappingPass:
     return blocks
 
 class RegisterAliasPass:
-  def __init__(self, input_file: str, source: List[str], blocks: List[Block]):
+  def __init__(self,
+               input_file: str,
+               source: List[str],
+               blocks: List[Block],
+               identifiers: List[AssemblerIdentifier]):
     self._raw_source = source
     self._input_file = input_file
     self._blocks = blocks
+    self._identifiers = identifiers
 
   @property
   def processed_source(self) -> List[str]:
@@ -499,14 +623,28 @@ class RegisterAliasPass:
         proper_command = re.split(KEYWORD_ALIAS, clear_line)[1]
         target_alias = re.split(',', proper_command)[1].strip()
         target_register = re.split(',', proper_command)[0].strip()
-
         parent_block_id = self._find_parent_block_id(idx)
+
+        if not Utils.is_valid_identifier(target_alias):
+          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                              f"{idx + 1}: Invalid identifier '{target_alias}' " +
+                              f"detected")
+
+        if not Utils.is_identifier_unique(self._identifiers, target_alias):
+          identifier = [x for x in self._identifiers if x.identifier_name == target_alias][0]
+          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                              f"{idx + 1}: identifier '{target_alias}' " +
+                              f"already defined in {identifier.file_name}, line {identifier.line + 1}")
 
         for alias in [x for x in aliasses if x.parent_block_id == parent_block_id]:
           if alias.name == target_alias:
             raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                                f"{idx + 1}: alias '{target_alias}' " +
                                 "has already been defined in this scope")
+
+        if parent_block_id == -1:
+          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                              f"{idx + 1}: Aliasses must be declared inside of 'blk' scopes")
 
         aliasses.append(Alias(idx, target_alias,
                               target_register,
@@ -562,8 +700,8 @@ class RegisterAliasPass:
                  allowed_aliases.append(alias)
 
             if len(allowed_aliases) == 0:
-              print(f"Warning: {os.path.basename(self._input_file)} line " +
-                    f"{idx + 1}: likely undefined register alias '{target_alias.name}'")
+              raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                              f"{idx + 1}: Undeclared alias '{target_alias.name}'")
             else:
               candidate_alias = [x for x in allowed_aliases if x.name == target_alias.name]
               closest_index = -1
@@ -831,10 +969,10 @@ def process_file(input_file: str, output_file: str, include_path: List[str]) -> 
   file_source = Utils.load_file_source(input_file, include_path)
   raw_source = file_source.copy()
   included_file_list = FindIncludesPass(input_file, file_source, include_path)
-  included_files, memory_aliasses = included_file_list.process()
+  included_files, identifiers = included_file_list.process()
   blocks_detection_pass = BlocksMappingPass(input_file, file_source)
   file_source, blocks = blocks_detection_pass.process()
-  reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks)
+  reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks, identifiers)
   file_source = reg_alias_pass.process()
   functions_pass = FunctionPass(input_file, file_source, blocks)
   file_source = functions_pass.process()

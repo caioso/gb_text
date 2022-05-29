@@ -1,5 +1,6 @@
 ; Test program
 include "inc/hardware.inc"
+include "main.z80"
 
 ; Section definition
 section "start", rom0[$0100]
@@ -40,7 +41,8 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 ;     als c, index
 ;     blk lp
         ; ...
-        ld a, vram_value
+;         als c, vram_value
+        ld a, c
         inc c
 ;         blk if ; index, z
             cnd c eq 100
