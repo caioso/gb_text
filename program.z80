@@ -37,16 +37,17 @@ blk prg
         add counter, value
     end ; cnd
 
-    als c, index
+    als b, limits
+    ld limits, $100
     blk lp
-        ; ...
-        als c, vram_valueg
-        ld a, vram_value
-        inc index
-        blk if ; index, z
-            cnd index eq 100
+        ; Count within loop
+        als c, counter
+        blk if
+            cnd limits eq counter
             break
-        end
+        end ; if
+
+        inc counter
     end ; lp
 
     inc index_2
@@ -55,10 +56,10 @@ blk prg
     ; ...
 
     ; Call function
-    call wait_for_vblank # extern function
+    call wait_for_vblank ; extern function
 
     ld c, $03
-    call is_bigger_than_16 # local function
+    call is_bigger_than_16 ; local function
 
 end ; prg
 
@@ -93,31 +94,31 @@ blk fn
     ld return, $00
 
     ; Condition
-    blk if
-        cnd input    eq $10     and
-        cnd counter  ne $20     or
-        cnd a        lt $00     and
-        cnd b        le $33     or
-        cnd [MEM]    gt c       and
-        cnd $33      ge [MEM]
+    ; blk if
+    ;     cnd input    eq $10     and
+    ;     cnd counter  ne $20     or
+    ;     cnd a        lt $00     and
+    ;     cnd b        le $33     or
+    ;     cnd [MEM]    gt c       and
+    ;     cnd $33      ge [MEM]
 
-        ld return, $01
+    ;     ld return, $01
 
-        ; Inner Codition
-        blk if
-            cnd input    == $10 &&
-            cnd counter  != $20 ||
-            cnd a        <  $00 &&
-            cnd b        <= $33 ||
-            cnd [MEM]    > c   &&
-            cnd $33      >= [MEM]
+    ;     ; Inner Codition
+    ;     blk if
+    ;         cnd input    == $10 &&
+    ;         cnd counter  != $20 ||
+    ;         cnd a        <  $00 &&
+    ;         cnd b        <= $33 ||
+    ;         cnd [MEM]    > c   &&
+    ;         cnd $33      >= [MEM]
 
-            ld return, $03
-        end
+    ;         ld return, $03
+    ;     end
 
-    else
-        ld return, $02
-    end
+    ; else
+    ;     ld return, $02
+    ; end
 
     ret
 end

@@ -1,6 +1,5 @@
 ; Test program
 include "inc/hardware.inc"
-include "main.z80"
 
 ; Section definition
 section "start", rom0[$0100]
@@ -35,19 +34,20 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 ;         als e, index
         ; ...
         ld [hl], $01
-        add a, d
+        add a, b
 ;     end ; cnd
 
-;     als c, index
+;     als b, limits
+    ld b, $100
 ;     blk lp
-        ; ...
-;         als c, vram_value
-        ld a, c
-        inc c
-;         blk if ; index, z
-            cnd c eq 100
+        ; Count within loop
+;         als c, counter
+;         blk if
+            cnd b eq c
             break
-;         end
+;         end ; if
+
+        inc c
 ;     end ; lp
 
     inc index_2
@@ -56,10 +56,10 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
     ; ...
 
     ; Call function
-    call wait_for_vblank # extern function
+    call wait_for_vblank ; extern function
 
     ld c, $03
-    call fn__is_bigger_than_16 # local function
+    call fn__is_bigger_than_16 ; local function
 
 ; end ; prg
 
@@ -94,31 +94,31 @@ fn__is_bigger_than_16: ; blk fn
     ld d, $00
 
     ; Condition
-;     blk if
-        cnd c    eq $10     and
-        cnd b  ne $20     or
-        cnd a        lt $00     and
-        cnd b        le $33     or
-        cnd [MEM]    gt c       and
-        cnd $33      ge [MEM]
+    ; blk if
+    ;     cnd input    eq $10     and
+    ;     cnd counter  ne $20     or
+    ;     cnd a        lt $00     and
+    ;     cnd b        le $33     or
+    ;     cnd [MEM]    gt c       and
+    ;     cnd $33      ge [MEM]
 
-        ld d, $01
+    ;     ld return, $01
 
-        ; Inner Codition
-;         blk if
-            cnd c    == $10 &&
-            cnd b  != $20 ||
-            cnd a        <  $00 &&
-            cnd b        <= $33 ||
-            cnd [MEM]    > c   &&
-            cnd $33      >= [MEM]
+    ;     ; Inner Codition
+    ;     blk if
+    ;         cnd input    == $10 &&
+    ;         cnd counter  != $20 ||
+    ;         cnd a        <  $00 &&
+    ;         cnd b        <= $33 ||
+    ;         cnd [MEM]    > c   &&
+    ;         cnd $33      >= [MEM]
 
-            ld d, $03
-;         end
+    ;         ld return, $03
+    ;     end
 
-    else
-        ld d, $02
-;     end
+    ; else
+    ;     ld return, $02
+    ; end
 
     ret
 ; end

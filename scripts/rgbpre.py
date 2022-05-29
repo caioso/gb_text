@@ -65,7 +65,8 @@ INCLUDE_REGEX = r"^(include)(\s)*\"((\w)+|(\/)*|(\w+)*|(.))+\"(\s)*$"
 MEMORY_ALIAS_REGEX = r"^(\s)*(DEF|def)?(_|\w)*(\s)+(EQU|equ)(\s)*"
 MACRO_REGEX = r"^(\s)*((_|(\w)*))(\s)*(:)(\s)*(macro|MACRO)(\s)*$"
 LABEL_REGEX = r"^(\s)*(\.)?((_|(\w)*))(\s)*(:)(\s)*$"
-IDENTIFIER_NAME_REGEX = r"^[a-zA-Z_$][a-zA-Z_$0-9]*$"
+NUMBER_REGEX = r"(\$|\&|%)?([0-9A-F]|[0-9a-f])+"
+IDENTIFIER_NAME_REGEX = r"^[a-zA-Z_][a-zA-Z_0-9]*$"
 CONDITIONAL_OPERATORS = ["ge", "gt", "eq", "ne",
                          "le", "lt", "==", "!=",
                          ">" , "<" , ">=", "<="]
@@ -83,6 +84,13 @@ TOKEN_REGISTER_D = ["d", "D"]
 TOKEN_REGISTER_E = ["e", "E"]
 TOKEN_REGISTER_H = ["h", "H"]
 TOKEN_REGISTER_L = ["l", "L"]
+TOKEN_REGISTER_AF = ["af", "AF"]
+TOKEN_REGISTER_BC = ["bc", "BC"]
+TOKEN_REGISTER_DE = ["de", "DE"]
+TOKEN_REGISTER_HL = ["hl", "HL"]
+TOKEN_REGISTER =  ["a", "A", "b", "B", "c", "C", "d", "D", "e", "E",
+                   "h", "H", "l", "L", "af", "AF", "bc", "BC", "de",
+                   "DE", "hl", "HL",]
 KEYWORDS = ["DEF", "BANK", "ALIGN", "SIZEOF" , "STARTOF", "SIN" , "COS" , "TAN",
             "ASIN" , "ACOS" , "ATAN" , "ATAN2", "FDIV", "FMUL", "POW", "LOG",
             "ROUND", "CEIL" , "FLOOR", "HIGH" , "LOW", "ISCONST", "STRCMP",
@@ -90,7 +98,7 @@ KEYWORDS = ["DEF", "BANK", "ALIGN", "SIZEOF" , "STARTOF", "SIN" , "COS" , "TAN",
             "STRLWR", "STRRPL", "STRFMT", "CHARLEN", "CHARSUB", "EQU", "SET",
             "=", "EQUS", "+=", "-=", "*=", "/=" , "%=", "|=", "^=", "&=", "<<=",
             ">>=", "INCLUDE", "PRINT" , "PRINTLN", "IF", "ELIF" , "ELSE" ,
-            "ENDC", "EXPORT", "DB" , "DS" , "DW" , "DL", "SECTION , FRAGMENT",
+            "ENDC", "EXPORT", "DB" , "DS" , "DW" , "DL", "SECTION" , "FRAGMENT",
             "RB , RW", "MACRO", "ENDM", "RSRESET" , "RSSET", "UNION" , "NEXTU" ,
             "ENDU", "INCBIN" , "REPT" , "FOR", "CHARMAP", "NEWCHARMAP",
             "SETCHARMAP", "PUSHC", "POPC", "SHIFT", "ENDR", "BREAK",
@@ -111,7 +119,7 @@ KEYWORDS = ["DEF", "BANK", "ALIGN", "SIZEOF" , "STARTOF", "SIN" , "COS" , "TAN",
             "strrpl", "strfmt", "charlen", "charsub", "equ", "set", "=",
             "equs", "+=", "-=", "*=", "/=" , "%=", "|=", "^=", "&=", "<<=",
             ">>=", "include", "print" , "println", "if", "elif" , "else" ,
-            "endc", "export", "db" , "ds" , "dw" , "dl", "section , fragment",
+            "endc", "export", "db" , "ds" , "dw" , "dl", "section" , "fragment",
             "rb , rw", "macro", "endm", "rsreset" , "rsset", "union" , "nextu" ,
             "endu", "incbin" , "rept" , "for", "charmap", "newcharmap",
             "setcharmap", "pushc", "popc", "shift", "endr", "break", "load",
@@ -124,7 +132,15 @@ KEYWORDS = ["DEF", "BANK", "ALIGN", "SIZEOF" , "STARTOF", "SIN" , "COS" , "TAN",
             "rst", "rl" , "rla" , "rlc" , "rlca", "rr" , "rra" , "rrc" , "rrca",
             "sbc" , "scf" , "stop", "sla", "sra", "srl" , "sub", "swap", "xor",
             "a", "b" , "c", "d" , "e", "h" , "l", "af" , "bc" , "de" , "sp",
-            "hl" ,  "hld/hl-" ,  "hli/hl+", "nz" , "z", "nc"]
+            "hl" ,  "hld/hl-" ,  "hli/hl+", "nz" , "z", "nc,", "ne", "NE", "!=", "eq", "EQ", "==", "lt", "LT", "<", "le", "LE", "<=", "gt", "GT", ">", "ge", "GE", ">=", "and", "or", "&&", "||",
+
+            KEYWORD_BLOCK, KEYWORD_BLOCK.upper(), KEYWORD_END, KEYWORD_END.upper(), KEYWORD_NAME, KEYWORD_NAME.upper(),
+KEYWORD_ALIAS, KEYWORD_ALIAS.upper(), KEYWORD_LOOP, KEYWORD_LOOP.upper(), KEYWORD_BREAK, KEYWORD_BREAK.upper(),
+KEYWORD_PROGRAM, KEYWORD_PROGRAM.upper(), KEYWORD_JUMP, KEYWORD_JUMP.upper(), KEYWORD_JUMP_RELATIVE, KEYWORD_JUMP_RELATIVE.upper(),
+KEYWORD_FUNCTION, KEYWORD_FUNCTION.upper(), KEYWORD_CALL, KEYWORD_CALL.upper(), KEYWORD_RETURN, KEYWORD_RETURN.upper(),
+KEYWORD_RETURN, KEYWORD_RETURN.upper(), KEYWORD_RETURN_I, KEYWORD_RETURN_I.upper(), KEYWORD_IF, KEYWORD_IF.upper(),
+KEYWORD_ELSE, KEYWORD_ELSE.upper(), KEYWORD_CND, KEYWORD_CND.upper(), KEYWORD_DATA_STRUCT, KEYWORD_DATA_STRUCT.upper(),
+KEYWORD_DEF, KEYWORD_DEF.upper(), KEYWORD_EQU, KEYWORD_EQU.upper(), ]
 
 class LabelOperation(Enum):
   DEF_LABEL = "DEF_LABEL"
@@ -318,11 +334,9 @@ class Utils:
     contents = []
     os_path = ""
     try:
-      for path in include_path:
-        os_path = os.path.abspath(file_path)
-        with open(os_path) as f:
-          contents = f.readlines()
-          break
+      os_path = os.path.abspath(file_path)
+      with open(os_path) as f:
+        contents = f.readlines()
     except:
       raise RuntimeError(f"Unable to open file {os_path}")
 
@@ -348,6 +362,14 @@ class Utils:
       if id.identifier_name == target_identifier:
         return False
     return True
+
+  @staticmethod
+  def is_assembler_identifier(identifier_list: List[AssemblerIdentifier],
+                           target_identifier: str) -> bool:
+    for id in identifier_list:
+      if id.identifier_name == target_identifier:
+        return True
+    return False
 
   @staticmethod
   def is_valid_identifier(identifier: str) -> bool:
@@ -594,11 +616,13 @@ class RegisterAliasPass:
                input_file: str,
                source: List[str],
                blocks: List[Block],
-               identifiers: List[AssemblerIdentifier]):
+               identifiers: List[AssemblerIdentifier],
+               functions: List[Block]):
     self._raw_source = source
     self._input_file = input_file
     self._blocks = blocks
     self._identifiers = identifiers
+    self._functions = functions
 
   @property
   def processed_source(self) -> List[str]:
@@ -674,15 +698,27 @@ class RegisterAliasPass:
 
   def _process_source(self, aliasses: List[Alias]) -> None:
     self._processed_source = []
+    names = [x.name for x in aliasses]
     for idx, line in enumerate(self._raw_source):
       clear_line = Utils.extract_line_no_comments(line)
       split_line = Utils.split_tokens(clear_line)
 
+      for line_token in split_line:
+        if line_token not in KEYWORDS and Utils.is_valid_identifier(line_token) and \
+           not Utils.is_assembler_identifier(self._identifiers, line_token) and \
+           line_token not in names and line_token not in self._functions:
+            print (f"{os.path.basename(self._input_file)} line " +
+                   f"{idx + 1}: Warning: Undeclared identifier '{line_token}'")
+
       line_text = line
-      for _ in split_line:
-        for target_alias in [x for x in aliasses if x.parent_block_id == self._find_parent_block_id(idx)]:
-          if re.search(r"\b" + (target_alias.name) + r"\b" , clear_line):
+      for line_token in split_line:
+        for target_alias in [x for x in aliasses]:
+          if re.search(r"\b" + (target_alias.name) + r"\b" , line_token):
+            if target_alias.position > idx:
+              raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                                f"{idx + 1}: Undeclared alias '{target_alias.name}'")
             line_text = line.replace(target_alias.name, target_alias.register)
+            break
 
       self._processed_source.append(line_text)
 
@@ -690,30 +726,30 @@ class RegisterAliasPass:
     for idx, line in enumerate(self._processed_source):
       clear_line = Utils.extract_line_no_comments(line)
       for target_alias in aliasses:
-          if re.search(r"\b" + (target_alias.name) + r"\b" , clear_line):
-            decendent = [x.id for x in self._find_decendent_blocks(idx)]
-            allowed_aliases = []
-            for alias in aliasses:
-              if idx >= alias.position and \
-                 alias.parent_block_id in decendent and \
-                 alias.name == target_alias.name:
-                 allowed_aliases.append(alias)
+        if re.search(r"\b" + (target_alias.name) + r"\b" , clear_line):
+          decendent = [x.id for x in self._find_decendent_blocks(idx)]
+          allowed_aliases = []
+          for alias in aliasses:
+            if idx >= alias.position and \
+                alias.parent_block_id in decendent and \
+                alias.name == target_alias.name:
+                allowed_aliases.append(alias)
 
-            if len(allowed_aliases) == 0:
-              raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                              f"{idx + 1}: Undeclared alias '{target_alias.name}'")
-            else:
-              candidate_alias = [x for x in allowed_aliases if x.name == target_alias.name]
-              closest_index = -1
-              min_diff = sys.maxsize
-              for alias_index, alias in enumerate(candidate_alias):
-                diff = abs(idx - alias.position)
-                if min_diff >= diff:
-                  min_diff = diff
-                  closest_index = alias_index
+          if len(allowed_aliases) == 0:
+            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                            f"{idx + 1}: Undeclared alias '{target_alias.name}'")
+          else:
+            candidate_alias = [x for x in allowed_aliases if x.name == target_alias.name]
+            closest_index = -1
+            min_diff = sys.maxsize
+            for alias_index, alias in enumerate(candidate_alias):
+              diff = abs(idx - alias.position)
+              if min_diff >= diff:
+                min_diff = diff
+                closest_index = alias_index
 
-              line_text = line.replace(target_alias.name, candidate_alias[closest_index].register)
-              self._processed_source[idx] = line_text
+            line_text = line.replace(target_alias.name, candidate_alias[closest_index].register)
+            self._processed_source[idx] = line_text
 
 class FunctionPass:
   def __init__(self, input_file: str, source: List[str], blocks: List[Block]):
@@ -728,7 +764,7 @@ class FunctionPass:
     self._emit_function_body(functions)
     self._correct_calls(functions)
     self._issue_warnings(functions)
-    return self._processed_source
+    return functions, self._processed_source
 
   def _find_functions(self) -> List[Block]:
     return [x for x in self._blocks if x.type == BlockType.FNC_BLOCK]
@@ -893,43 +929,30 @@ class ConditionPass:
       # Check last condition
       clear_line = Utils.extract_line_no_comments(self._raw_source[condition_list_end])
       tokens = Utils.split_tokens(clear_line)
-      print(tokens)
       if tokens[-1] in BOOLEAN_OPERATORS:
           raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                              f"{condition_list_end + 1}: unexpected '{tokens[-1]}'")
 
   def _convert_condition(self, tokens: List[str], clear_line: str) -> str:
     # TODO: Conditional Code Emission is not correct
-    # Detect all memory & register labels
     # Classify conditions
     # Emit code accordingly
     alignment = Utils.get_alignment(clear_line)
     condition = f";{clear_line[:-1]}\n"
-    if tokens[1] not in TOKEN_REGISTER_A:
-      condition += f"{alignment}ld a, {tokens[1]}\n"
-    else:
-      condition += f"{alignment}pop AF\n"
-      condition += f"{alignment}push AF\n"
 
-    if '[' not in tokens[3] and ']' not in tokens[3]:
-      condition += f"{alignment}cp {tokens[3]}\n"
-    else:
-      condition += f"{alignment}sub {tokens[3]}\n"
+    condition_left_side = ""
+    # Left Side
+    if tokens[1] in TOKEN_REGISTER:
+      print(f"Condition Left side is a register ('{tokens[1]}')")
+    elif re.match(NUMBER_REGEX, tokens[1]):
+      print(f"Condition Left side is a number ('{tokens[1]}')")
 
-    if tokens[2] in TOKEN_EQUAL:
-      condition += f"{alignment}jp z, <target>\n"
-    elif tokens[2] in TOKEN_NOT_EQUAL:
-      condition += f"{alignment}jp nz, <target>\n"
-    elif tokens[2] in TOKEN_LESS_THAN:
-      condition += f"{alignment}jp c, <target>\n"
-    elif tokens[2] in TOKEN_LESS_THAN_EQ_TO:
-      condition += f"{alignment}jp c, <target>\n"
-      condition += f"{alignment}jp z, <target>\n"
-    elif tokens[2] in TOKEN_GREATER_THAN:
-      condition += f"{alignment}jp nc, <target>\n"
-    elif tokens[2] in TOKEN_GREATER_THAN_EQ_TO:
-      condition += f"{alignment}jp nc, <target>\n"
-      condition += f"{alignment}jp nz, <target>\n"
+    condition_right_side = ""
+    # Right Side
+    if tokens[3] in TOKEN_REGISTER:
+      print(f"Condition Right side is a register ('{tokens[3]}')")
+    elif re.match(NUMBER_REGEX, tokens[3]):
+      print(f"Condition Right side is a number ('{tokens[3]}')")
 
     return condition
 
@@ -972,10 +995,10 @@ def process_file(input_file: str, output_file: str, include_path: List[str]) -> 
   included_files, identifiers = included_file_list.process()
   blocks_detection_pass = BlocksMappingPass(input_file, file_source)
   file_source, blocks = blocks_detection_pass.process()
-  reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks, identifiers)
-  file_source = reg_alias_pass.process()
   functions_pass = FunctionPass(input_file, file_source, blocks)
-  file_source = functions_pass.process()
+  function_names, file_source = functions_pass.process()
+  reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks, identifiers, function_names)
+  file_source = reg_alias_pass.process()
   conditions_pass = ConditionPass(input_file, file_source, raw_source, blocks)
   file_source = conditions_pass.process()
 
