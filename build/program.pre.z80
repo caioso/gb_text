@@ -1,5 +1,5 @@
 ; Test program
-include "inc/hardware.inc"
+include "hardware.inc"
 
 ; Section definition
 section "start", rom0[$0100]
@@ -43,11 +43,16 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
         ; Count within loop
 ;         als c, counter
 ;         blk if
-            cnd b eq c
+;            cnd b eq c
+               ld a, b
+               cp c
+               jr nz, <condition_end>
             break
+        else
+            inc c
 ;         end ; if
 
-        inc c
+<condition_end>:
 ;     end ; lp
 
     inc index_2

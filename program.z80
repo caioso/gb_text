@@ -1,5 +1,5 @@
 ; Test program
-include "inc/hardware.inc"
+include "hardware.inc"
 
 ; Section definition
 section "start", rom0[$0100]
@@ -45,9 +45,9 @@ blk prg
         blk if
             cnd limits eq counter
             break
+        else
+            inc counter
         end ; if
-
-        inc counter
     end ; lp
 
     inc index_2

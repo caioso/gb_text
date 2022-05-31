@@ -2,6 +2,7 @@
 
 from ast import keyword
 from calendar import c
+from multiprocessing import Condition
 import os
 import re
 import argparse
@@ -10,6 +11,7 @@ import sys
 from enum import Enum
 from turtle import clear
 from typing import List, Tuple
+from xml.etree.ElementInclude import include
 
 # sys.tracebacklimit = 0
 
@@ -164,9 +166,15 @@ class FunctionArgumentType(Enum):
   OUT_ARG = "OUT_ARG"
 
 class IdentifierType(Enum):
-  MEMORY_ALIAS = "MEMORY_ALIAS"
+  NAMED_CONSTANT = "NAMED_CONSTANT"
   MACRO = "MACRO"
   LABEL = "LABEL"
+
+class ConditionalOperand(Enum):
+  REGISTER = "REGISTER"
+  MEMORY_ALIAS = "MEMORY_ALIAS"
+  NUMBER = "NUMBER"
+  INVALID = "INVALID"
 
 class AssemblerIdentifier:
   def __init__(self, identifier_name: str, file_name: str, line: int, type: IdentifierType):
@@ -380,6 +388,20 @@ class Utils:
 
     return True
 
+  @staticmethod
+  def find_parent_block_id(line_number: int, blocks: List[Block]) -> int:
+    min_diff = sys.maxsize
+    min_id = -1
+
+    for block in blocks:
+      if line_number >= block.start and line_number <= block.end:
+        diff = abs(block.start - line_number)
+        if min_diff >= diff:
+          min_diff = diff
+          min_id = block.id
+
+    return min_id
+
 class FindIncludesPass:
   def __init__(self, input_file: str, source: List[str], include_path: List[str]):
     self._input_file = input_file
@@ -415,12 +437,12 @@ class FindIncludesPass:
             self._identifier_list.append(AssemblerIdentifier(tokens[1],
                                                         file,
                                                         idx,
-                                                        IdentifierType.MEMORY_ALIAS))
+                                                        IdentifierType.NAMED_CONSTANT))
           else:
             self._identifier_list.append(AssemblerIdentifier(tokens[0],
                                                         file,
                                                         idx,
-                                                        IdentifierType.MEMORY_ALIAS))
+                                                        IdentifierType.NAMED_CONSTANT))
 
   def _extract_macros(self) -> None:
     for file in self._include_list:
@@ -607,7 +629,18 @@ class BlocksMappingPass:
         block_start = blocks_start.pop()
         block_type = blocks_type.pop()
         block_end = block.position
-        blocks.append(Block(block_start, block_end, block_type, len(blocks)))
+
+        new_block = Block(block_start, block_end, block_type, len(blocks))
+        blocks.append(new_block)
+
+    for block in blocks:
+      if (block.type == BlockType.IF_BLOCK or \
+          block.type == BlockType.LP_BLOCK) and \
+         (block.start == 0 or \
+         Utils.find_parent_block_id(block.start - 1, blocks) == -1):
+        block_type = "if" if block.type == BlockType.IF_BLOCK else "lp"
+        raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                           f"{block.start + 1}: unexpected '{block_type}' block found")
 
     return blocks
 
@@ -647,7 +680,7 @@ class RegisterAliasPass:
         proper_command = re.split(KEYWORD_ALIAS, clear_line)[1]
         target_alias = re.split(',', proper_command)[1].strip()
         target_register = re.split(',', proper_command)[0].strip()
-        parent_block_id = self._find_parent_block_id(idx)
+        parent_block_id = Utils.find_parent_block_id(idx, self._blocks)
 
         if not Utils.is_valid_identifier(target_alias):
           raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
@@ -674,19 +707,6 @@ class RegisterAliasPass:
                               target_register,
                               LabelOperation.DEF_LABEL, parent_block_id))
     return aliasses
-
-  def _find_parent_block_id(self, line_number: int) -> int:
-    min_diff = sys.maxsize
-    min_id = -1
-
-    for block in self._blocks:
-      if line_number >= block.start and line_number <= block.end:
-        diff = abs(block.start - line_number)
-        if min_diff >= diff:
-          min_diff = diff
-          min_id = block.id
-
-    return min_id
 
   def _find_decendent_blocks(self, line_number: int) -> List[Block]:
     blocks = []
@@ -875,12 +895,14 @@ class ConditionPass:
   def _parse_conditions(self, conditional_blocks: List[Block]) -> None:
     for block in conditional_blocks:
       print(f"Condition block at {block.start + 1}")
+      self._processed_source[block.end] += "\n<condition_end>:\n"
       for line in range(block.start, block.end):
         clear_line = Utils.extract_line_no_comments(self._processed_source[line])
         if re.match(CONDITION_REGEX, clear_line):
           tokens = Utils.split_tokens(clear_line)
           self._validate_condition(tokens, line)
           converted_condition = self._convert_condition(tokens, clear_line)
+          self._processed_source[line] = converted_condition;
           print(converted_condition)
 
   def _validate_conditional_blocks(self, conditional_blocks: List[Block]) -> None:
@@ -922,13 +944,18 @@ class ConditionPass:
         for line in range(condition_list_start, condition_list_end):
           clear_line = Utils.extract_line_no_comments(self._raw_source[line])
           tokens = Utils.split_tokens(clear_line)
-          print(f"Token {tokens[-1]}")
+          if len(tokens) == 0:
+            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                               f"{line + 1}: expected 'cnd'")
           if tokens[-1] not in BOOLEAN_OPERATORS:
             raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                                f"{line + 1}: expected 'and' or 'or'")
       # Check last condition
       clear_line = Utils.extract_line_no_comments(self._raw_source[condition_list_end])
       tokens = Utils.split_tokens(clear_line)
+      if len(tokens) == 0:
+        raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                               f"{line + 1}: expected 'cnd'")
       if tokens[-1] in BOOLEAN_OPERATORS:
           raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                              f"{condition_list_end + 1}: unexpected '{tokens[-1]}'")
@@ -940,19 +967,75 @@ class ConditionPass:
     alignment = Utils.get_alignment(clear_line)
     condition = f";{clear_line[:-1]}\n"
 
-    condition_left_side = ""
+    condition_left_side = ConditionalOperand.INVALID
     # Left Side
     if tokens[1] in TOKEN_REGISTER:
       print(f"Condition Left side is a register ('{tokens[1]}')")
+      condition_left_side = ConditionalOperand.REGISTER
     elif re.match(NUMBER_REGEX, tokens[1]):
       print(f"Condition Left side is a number ('{tokens[1]}')")
+      condition_left_side = ConditionalOperand.NUMBER
 
-    condition_right_side = ""
+    condition_right_side = ConditionalOperand.INVALID
     # Right Side
     if tokens[3] in TOKEN_REGISTER:
       print(f"Condition Right side is a register ('{tokens[3]}')")
+      condition_right_side = ConditionalOperand.REGISTER
     elif re.match(NUMBER_REGEX, tokens[3]):
       print(f"Condition Right side is a number ('{tokens[3]}')")
+      condition_right_side = ConditionalOperand.NUMBER
+
+    condition += self._emit_condition_code(
+            condition_left_side,
+            tokens[1],
+            condition_right_side,
+            tokens[3],
+            self._convert_logic_operator_to_jr_condition(
+            self._negate_logic_operator(tokens[2])),
+            alignment)
+
+    return condition
+
+  def _convert_logic_operator_to_jr_condition(self, operator: str) -> List[str]:
+    if operator in TOKEN_EQUAL:
+      return ["z"]
+    elif operator in TOKEN_NOT_EQUAL:
+      return ["nz"]
+    elif operator in TOKEN_LESS_THAN:
+      return ["c"]
+    elif operator in TOKEN_LESS_THAN_EQ_TO:
+      return ["c", "z"]
+    elif operator in TOKEN_GREATER_THAN:
+      return ["nc"]
+    elif operator in TOKEN_GREATER_THAN_EQ_TO:
+      return ["nc", "z"]
+
+  def _negate_logic_operator(self, operator: str) -> str:
+    if operator in TOKEN_EQUAL:
+      return TOKEN_NOT_EQUAL[0]
+    elif operator in TOKEN_NOT_EQUAL:
+      return TOKEN_EQUAL[0]
+    elif operator in TOKEN_LESS_THAN:
+      return TOKEN_GREATER_THAN_EQ_TO[0]
+    elif operator in TOKEN_LESS_THAN:
+      return TOKEN_GREATER_THAN[0]
+    elif operator in TOKEN_GREATER_THAN:
+      return TOKEN_LESS_THAN[0]
+    elif operator in TOKEN_GREATER_THAN_EQ_TO:
+      return TOKEN_LESS_THAN[0]
+
+  def _emit_condition_code(self,
+                           left: ConditionalOperand,
+                           left_operand: str,
+                           right: ConditionalOperand,
+                           right_operand: str,
+                           logic_operators: List[str],
+                           alignment: str) -> str:
+    condition = f"{alignment}ld a, {left_operand}\n"
+    condition += f"{alignment}cp {right_operand}\n"
+
+    for idx, operator in enumerate(logic_operators):
+      condition += f"{alignment}jr {operator}, <condition_end>\n"
 
     return condition
 
@@ -981,6 +1064,8 @@ def main():
   input_path = args.input[0]
   output_path = args.output[0]
   include_path = args.include
+  if include_path == None:
+    include_path = []
   include_path.append(os.getcwd())
   include_path = list(set(include_path))
 
