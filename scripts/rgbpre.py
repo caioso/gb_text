@@ -60,14 +60,14 @@ BLOCK_REGEX = r"^(\s)*" + KEYWORD_BLOCK + "(\s)*(" + KEYWORD_PROGRAM + "|" + \
                                      KEYWORD_DATA_STRUCT + ")?(\s)*$"
 NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*(\w)+(\s)*$"
 END_REGEX = r"^(\s)*" + KEYWORD_END +"(\s)*$"
-CONDITION_REGEX = r"^(\s)*cnd(\s)+\$?((\[)?\b(\w)+\b(\])?)(\s)+" +\
+CONDITION_REGEX = r"^(\s)*cnd(\s)+\$?((\[)?(.*)(\])?)(\s)+" +\
                   r"(ge|gt|eq|ne|le|lt|\=\=|\!\=|\>|\<|\<\=|\>\=)(\s)+" +\
-                  r"\$?((\[)?\b(\w)+\b(\])?)(\s)*(and|or|\&\&|\|\|)?(\s)*$"
+                  r"\$?((\[)?(.*)(\])?)(\s)*(and|or|\&\&|\|\|)?(\s)*$"
 INCLUDE_REGEX = r"^(include)(\s)*\"((\w)+|(\/)*|(\w+)*|(.))+\"(\s)*$"
 MEMORY_ALIAS_REGEX = r"^(\s)*(DEF|def)?(_|\w)*(\s)+(EQU|equ)(\s)*"
 MACRO_REGEX = r"^(\s)*((_|(\w)*))(\s)*(:)(\s)*(macro|MACRO)(\s)*$"
 LABEL_REGEX = r"^(\s)*(\.)?((_|(\w)*))(\s)*(:)(\s)*$"
-NUMBER_REGEX = r"(\$|\&|%)?([0-9A-F]|[0-9a-f])+"
+NUMBER_REGEX = r"((\$|\&|%)?([0-9A-F]|[0-9a-f]))+"
 IDENTIFIER_NAME_REGEX = r"^[a-zA-Z_][a-zA-Z_0-9]*$"
 CONDITIONAL_OPERATORS = ["ge", "gt", "eq", "ne",
                          "le", "lt", "==", "!=",
@@ -875,181 +875,6 @@ class FunctionPass:
             print(f"Warning: {os.path.basename(self._input_file)} line " +
                   f"{idx + 1}: branching to function '{func.name}' without using 'call'")
 
-class ConditionPass:
-  def __init__(self, input_file: str, source: List[str], raw_source: List[str], blocks: List[Block]):
-    self._raw_source = raw_source
-    self._processed_source = source
-    self._input_file = input_file
-    self._blocks = blocks
-
-  def process(self) -> None:
-    conditional_blocks = self._find_conditional_blocks()
-    self._validate_conditional_blocks(conditional_blocks)
-    self._parse_conditions(conditional_blocks)
-
-    return self._processed_source
-
-  def _find_conditional_blocks(self) -> List[Block]:
-    return [x for x in self._blocks if x.type == BlockType.IF_BLOCK]
-
-  def _parse_conditions(self, conditional_blocks: List[Block]) -> None:
-    for block in conditional_blocks:
-      print(f"Condition block at {block.start + 1}")
-      self._processed_source[block.end] += "\n<condition_end>:\n"
-      for line in range(block.start, block.end):
-        clear_line = Utils.extract_line_no_comments(self._processed_source[line])
-        if re.match(CONDITION_REGEX, clear_line):
-          tokens = Utils.split_tokens(clear_line)
-          self._validate_condition(tokens, line)
-          converted_condition = self._convert_condition(tokens, clear_line)
-          self._processed_source[line] = converted_condition;
-          print(converted_condition)
-
-  def _validate_conditional_blocks(self, conditional_blocks: List[Block]) -> None:
-    for block in conditional_blocks:
-      in_conditions_list = False
-      in_condition_body = False
-      condition_list_start = 0
-      condition_list_end = 0
-      skip_inner_block = []
-      for line in range(block.start + 1, block.end):
-        clear_line = Utils.extract_line_no_comments(self._raw_source[line])
-        if len(skip_inner_block) != 0:
-          if re.match(BLOCK_REGEX, clear_line):
-            skip_inner_block.append(1)
-          elif re.match(END_REGEX, clear_line):
-            skip_inner_block.pop()
-        else:
-          if in_conditions_list == False and \
-            in_condition_body == False and \
-            re.match(CONDITION_REGEX, clear_line):
-            in_conditions_list = True
-            condition_list_start = line
-          elif in_conditions_list == True and \
-              in_condition_body == False and \
-              not re.match(CONDITION_REGEX, clear_line):
-            in_condition_body = True
-            in_conditions_list = False
-            condition_list_end = line - 1
-          elif in_condition_body == True and \
-               in_conditions_list == False and \
-               re.match(BLOCK_REGEX, clear_line):
-            skip_inner_block.append(1)
-          elif in_condition_body == True and \
-            re.match(CONDITION_REGEX, clear_line):
-            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                               f"{line + 1}: unexpected 'cnd' found")
-
-      if abs(condition_list_end - condition_list_start) >= 2:
-        for line in range(condition_list_start, condition_list_end):
-          clear_line = Utils.extract_line_no_comments(self._raw_source[line])
-          tokens = Utils.split_tokens(clear_line)
-          if len(tokens) == 0:
-            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                               f"{line + 1}: expected 'cnd'")
-          if tokens[-1] not in BOOLEAN_OPERATORS:
-            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                               f"{line + 1}: expected 'and' or 'or'")
-      # Check last condition
-      clear_line = Utils.extract_line_no_comments(self._raw_source[condition_list_end])
-      tokens = Utils.split_tokens(clear_line)
-      if len(tokens) == 0:
-        raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                               f"{line + 1}: expected 'cnd'")
-      if tokens[-1] in BOOLEAN_OPERATORS:
-          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                             f"{condition_list_end + 1}: unexpected '{tokens[-1]}'")
-
-  def _convert_condition(self, tokens: List[str], clear_line: str) -> str:
-    # TODO: Conditional Code Emission is not correct
-    # Classify conditions
-    # Emit code accordingly
-    alignment = Utils.get_alignment(clear_line)
-    condition = f";{clear_line[:-1]}\n"
-
-    condition_left_side = ConditionalOperand.INVALID
-    # Left Side
-    if tokens[1] in TOKEN_REGISTER:
-      print(f"Condition Left side is a register ('{tokens[1]}')")
-      condition_left_side = ConditionalOperand.REGISTER
-    elif re.match(NUMBER_REGEX, tokens[1]):
-      print(f"Condition Left side is a number ('{tokens[1]}')")
-      condition_left_side = ConditionalOperand.NUMBER
-
-    condition_right_side = ConditionalOperand.INVALID
-    # Right Side
-    if tokens[3] in TOKEN_REGISTER:
-      print(f"Condition Right side is a register ('{tokens[3]}')")
-      condition_right_side = ConditionalOperand.REGISTER
-    elif re.match(NUMBER_REGEX, tokens[3]):
-      print(f"Condition Right side is a number ('{tokens[3]}')")
-      condition_right_side = ConditionalOperand.NUMBER
-
-    condition += self._emit_condition_code(
-            condition_left_side,
-            tokens[1],
-            condition_right_side,
-            tokens[3],
-            self._convert_logic_operator_to_jr_condition(
-            self._negate_logic_operator(tokens[2])),
-            alignment)
-
-    return condition
-
-  def _convert_logic_operator_to_jr_condition(self, operator: str) -> List[str]:
-    if operator in TOKEN_EQUAL:
-      return ["z"]
-    elif operator in TOKEN_NOT_EQUAL:
-      return ["nz"]
-    elif operator in TOKEN_LESS_THAN:
-      return ["c"]
-    elif operator in TOKEN_LESS_THAN_EQ_TO:
-      return ["c", "z"]
-    elif operator in TOKEN_GREATER_THAN:
-      return ["nc"]
-    elif operator in TOKEN_GREATER_THAN_EQ_TO:
-      return ["nc", "z"]
-
-  def _negate_logic_operator(self, operator: str) -> str:
-    if operator in TOKEN_EQUAL:
-      return TOKEN_NOT_EQUAL[0]
-    elif operator in TOKEN_NOT_EQUAL:
-      return TOKEN_EQUAL[0]
-    elif operator in TOKEN_LESS_THAN:
-      return TOKEN_GREATER_THAN_EQ_TO[0]
-    elif operator in TOKEN_LESS_THAN:
-      return TOKEN_GREATER_THAN[0]
-    elif operator in TOKEN_GREATER_THAN:
-      return TOKEN_LESS_THAN[0]
-    elif operator in TOKEN_GREATER_THAN_EQ_TO:
-      return TOKEN_LESS_THAN[0]
-
-  def _emit_condition_code(self,
-                           left: ConditionalOperand,
-                           left_operand: str,
-                           right: ConditionalOperand,
-                           right_operand: str,
-                           logic_operators: List[str],
-                           alignment: str) -> str:
-    condition = f"{alignment}ld a, {left_operand}\n"
-    condition += f"{alignment}cp {right_operand}\n"
-
-    for idx, operator in enumerate(logic_operators):
-      condition += f"{alignment}jr {operator}, <condition_end>\n"
-
-    return condition
-
-  def _validate_condition(self, tokens: List[str], line: int) -> None:
-    if tokens[0] != KEYWORD_CND:
-      raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                                 f"{line + 1}: expected 'cnd' found {tokens[0]}")
-    if tokens[2] not in CONDITIONAL_OPERATORS:
-      raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                                 f"{line + 1}: unexpected {tokens[2]} found")
-    if len(tokens) == 5 and tokens[4] not in BOOLEAN_OPERATORS:
-      raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                                 f"{line + 1}: unexpected {tokens[4]} found")
-
 def main():
   parser = argparse.ArgumentParser(description='rgb pre-processor')
   parser.add_argument('-i', '--input', type=str,
@@ -1084,8 +909,6 @@ def process_file(input_file: str, output_file: str, include_path: List[str]) -> 
   function_names, file_source = functions_pass.process()
   reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks, identifiers, function_names)
   file_source = reg_alias_pass.process()
-  conditions_pass = ConditionPass(input_file, file_source, raw_source, blocks)
-  file_source = conditions_pass.process()
 
   final_source = file_source
   #save file

@@ -43,16 +43,26 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
         ; Count within loop
 ;         als c, counter
 ;         blk if
-;            cnd b eq c
-               ld a, b
-               cp c
-               jr nz, <condition_end>
+            cnd b gt c
             break
         else
             inc c
 ;         end ; if
 
-<condition_end>:
+;         blk if
+            cnd d eq $01
+            break
+;         end ; if
+
+;         blk if
+            cnd $FF eq c
+            break
+;         end ; if
+
+;         blk if
+            cnd a eq $00
+            break
+;         end ; if
 ;     end ; lp
 
     inc index_2

@@ -43,10 +43,25 @@ blk prg
         ; Count within loop
         als c, counter
         blk if
-            cnd limits eq counter
+            cnd limits gt counter
             break
         else
             inc counter
+        end ; if
+
+        blk if
+            cnd d eq $01
+            break
+        end ; if
+
+        blk if
+            cnd $FF eq c
+            break
+        end ; if
+
+        blk if
+            cnd a eq $00
+            break
         end ; if
     end ; lp
 
