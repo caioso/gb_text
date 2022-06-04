@@ -102,10 +102,11 @@ class BlocksMappingPass:
 
     for block in blocks:
       if (block.type == BlockType.IF_BLOCK or \
+          block.type == BlockType.GENERIC_BLOCK or \
           block.type == BlockType.LP_BLOCK) and \
          (block.start == 0 or \
          Utils.find_parent_block_id(block.start - 1, blocks) == -1):
-        block_type = "if" if block.type == BlockType.IF_BLOCK else "lp"
+        block_type = "if" if block.type == BlockType.IF_BLOCK else ("blk" if block.type == BlockType.GENERIC_BLOCK else "lp")
         raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                            f"{block.start + 1}: unexpected '{block_type}' block found")
 

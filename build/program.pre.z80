@@ -18,6 +18,25 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 ;  def attributes
 ;end ; struct
 
+fn__dummy: ; blk fn
+;     name dummy
+;     als a, limits
+;     als c, counter
+;     blk if
+        cnd a gt c and
+        cnd a eq $00 or
+        cnd b lt $33 + 2 and
+        cnd $55 + 1 - 44 + SIN(3) gt [hl] and
+        cnd [_RAM] eq $AA or
+        cnd e ge [_RAM - $01]
+
+        sub a, $03
+        add a, $0F
+    else
+        inc c
+;     end ; if
+; end ; fn
+
 ; Main program
 ; blk prg
     name gameboy_game
@@ -38,7 +57,7 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 ;     end ; cnd
 
 ;     als b, limits
-    ld b, $100
+    ld a, $100
 ;     blk lp
         ; Count within loop
 ;         als c, counter
