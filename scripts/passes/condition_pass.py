@@ -1,33 +1,39 @@
 import os
-import re
-from turtle import left
 from typing import List, Tuple
-
-from numpy import number
 
 from enums import BlockType
 from constants import *
+from support.assembler_identifier import AssemblerIdentifier
+from support.function import Function
 from support.block import Block
+from support.condition import Condition
 from utils import Utils
 
 class ConditionPass:
-  def  __init__(self, input_file: str, source: List[str], blocks: List[Block]):
+  def  __init__(self,
+                input_file: str,
+                source: List[str],
+                blocks: List[Block],
+                identifiers: List[AssemblerIdentifier],
+                functions: List[Function]):
     self._raw_source = source
     self._input_file = input_file
     self._blocks = blocks
+    self._identifiers = identifiers
 
   def process(self) -> None:
       for block in self._blocks:
         if block.type == BlockType.IF_BLOCK:
           self._validate_condition_header(block)
-          self._classify_conditions(block)
+          self._parse_conditions(block)
           print(f"If at line {block.start}")
           for line in range(block.start, block.end):
             clear_line = Utils.extract_line_no_comments(self._raw_source[line])
             if len(clear_line) != 0:
               print (f"\t{self._raw_source[line][:-1]}")
 
-  def _classify_conditions(self, block: Block) -> None:
+  def _parse_conditions(self, block: Block) -> None:
+    conditions = []
     for line in range(block.start, block.end):
       clear_line = Utils.extract_line_no_comments(self._raw_source[line]).strip()
 
@@ -37,10 +43,16 @@ class ConditionPass:
         left_operand = self._extract_left_operand(tokens, conditional_operator_position, line)
         right_operand = self._extract_right_operand(tokens, conditional_operator_position, line)
         logic_operator = self._extract_logical_operand(tokens)
-        print (f"Conditional operator at {conditional_operator_position} ({tokens[conditional_operator_position]})")
-        print (f" left operand: {left_operand}")
-        print (f" right operand: {right_operand}")
-        print (f" logical operand: {logic_operator}")
+        conditions.append(Condition(left_operand,
+                                    right_operand,
+                                    tokens[conditional_operator_position],
+                                    logic_operator))
+
+    for cnd in conditions:
+      print (f"Conditional operator at {conditional_operator_position} ({cnd.bool_operand})")
+      print (f" left operand: {cnd.left_operand}")
+      print (f" right operand: {cnd.right_operand}")
+      print (f" logical operand: {cnd.logic_operand}")
 
   def _extract_logical_operand(self, tokens: List[str]) -> int:
     operand = ""

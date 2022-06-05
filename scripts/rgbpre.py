@@ -46,10 +46,10 @@ def process_file(input_file: str, output_file: str, include_path: List[str]) -> 
   blocks_detection_pass = BlocksMappingPass(input_file, file_source)
   file_source, blocks = blocks_detection_pass.process()
   functions_pass = FunctionPass(input_file, file_source, blocks)
-  function_names, file_source = functions_pass.process()
-  reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks, identifiers, function_names)
+  functions, file_source = functions_pass.process()
+  reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks, identifiers, functions)
   file_source = reg_alias_pass.process()
-  cond_pass = ConditionPass(input_file, file_source, blocks)
+  cond_pass = ConditionPass(input_file, file_source, blocks, identifiers, functions)
   cond_pass.process()
   final_source = file_source
 

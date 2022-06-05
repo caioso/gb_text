@@ -10,16 +10,18 @@ jp gameboy_game ; Jump to program entry
 ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 
 ; Type definition
-;blk struct
+;blk ds
 ;  name sprite
-;  def position_x
-;  def position_y
-;  def tile
-;  def attributes
+;bgn
+;  att position_x
+;  att position_y
+;  att tile
+;  att attributes
 ;end ; struct
 
 blk fn
     name dummy
+bgn
     als a, limits
     als c, counter
     blk if
@@ -28,8 +30,8 @@ blk fn
         cnd b lt $33 + 2 and
         cnd $55 + 1 - 44 + SIN(3) gt [hl] and
         cnd [_RAM] eq $AA or
-        cnd e ge [_RAM - $01] or
-
+        cnd e ge [_RAM - $01]
+    bgn
         sub a, $03
         add a, $0F
     else
@@ -40,13 +42,14 @@ end ; fn
 ; Main program
 blk prg
     name gameboy_game
-
+bgn
     ; Define als
     als c, counter
     als b, value
     ld counter, $00
 
     blk
+    bgn
         als hl, vram_value
         als a, counter
         als d, value
@@ -59,10 +62,12 @@ blk prg
     als b, limits
     ld limits, $100
     blk lp
+    bgn
         ; Count within loop
         als c, counter
         blk if
             cnd limits gt counter
+        bgn
             break
         else
             inc counter
@@ -70,16 +75,19 @@ blk prg
 
         blk if
             cnd d eq $01
+        bgn
             break
         end ; if
 
         blk if
             cnd $FF eq c
+        bgn
             break
         end ; if
 
         blk if
             cnd a eq $00
+        bgn
             break
         end ; if
     end ; lp
@@ -100,7 +108,7 @@ end ; prg
 ; Functions
 blk fn
     name my_function
-
+bgn
     als c, input_1
     als d, input_2
     als l, output_1
@@ -120,7 +128,7 @@ end
 ;            $02 otherwise
 blk fn
     name is_bigger_than_16
-
+bgn
     als c, input
     als d, return
     als b, counter

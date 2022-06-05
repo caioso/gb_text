@@ -3,6 +3,8 @@ import os
 import re
 from typing import List, Tuple
 
+from numpy import block
+
 from constants import *
 from enums import (
   BlockMarkerType,
@@ -30,13 +32,35 @@ class BlocksMappingPass:
     self._block_list = []
     self._block_type_list = []
 
-    for idx, line in enumerate(self._processed_source):
+    for idx, line in enumerate(self._raw_source):
       clear_line = Utils.extract_line_no_comments(line)
-      if re.match(BLOCK_REGEX, clear_line):
+      if re.match(BLOCK_HEADER_BLK_REGEX, clear_line) or \
+         re.match(BLOCK_HEADER_PRG_REGEX, clear_line) or \
+         re.match(BLOCK_HEADER_LP_REGEX, clear_line) or \
+         re.match(BLOCK_HEADER_IF_REGEX, clear_line) or \
+         re.match(BLOCK_HEADER_FN_REGEX, clear_line) or \
+         re.match(BLOCK_HEADER_DS_REGEX, clear_line):
         self._processed_source[idx] = f"; {line}"
         self._block_list.append(BlockMarker(idx, BlockMarkerType.BLOCK_START))
         self._block_type_list.append(self._detect_block_type(clear_line, idx))
-      elif re.match(END_REGEX, clear_line):
+      elif re.match(BGN_REGEX, clear_line) or \
+           (KEYWORD_BGN[0] in clear_line or \
+            KEYWORD_BGN[1] in clear_line):
+          tokens = Utils.split_tokens(clear_line)
+          if len(tokens) != 1:
+            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                               f"{idx + 1}: keyword '{KEYWORD_BGN[0]}' and "+
+                               f"'{KEYWORD_BGN[1]}' must be the only token in the line")
+          self._processed_source[idx] = f"; {line}"
+      elif re.match(END_REGEX, clear_line)  or \
+           (KEYWORD_END[0] in clear_line or \
+            KEYWORD_END[1] in clear_line):
+        tokens = Utils.split_tokens(clear_line)
+        if len(tokens) != 1:
+          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                              f"{idx + 1}: keyword '{KEYWORD_END[0]}' and "+
+                              f"'{KEYWORD_END[1]}' must be the only token in the line")
+
         self._processed_source[idx] = f"; {line}"
         self._block_list.append(BlockMarker(idx, BlockMarkerType.BLOCK_END))
         self._block_type_list.append(self._detect_block_type(clear_line, idx))
@@ -74,12 +98,12 @@ class BlocksMappingPass:
       elif block.type == BlockMarkerType.BLOCK_END:
         if len(block_stack) == 0:
           raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                               f"{block.position + 1}: unexpected 'end'")
+                               f"{block.position + 1}: unexpected 'end' or '}}'")
         block_stack.pop()
 
     if len(block_stack) != 0:
       raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                               f"{len(self._processed_source)}: 'end' expected")
+                               f"{len(self._processed_source)}: 'end' or '}}' expected")
 
   def _generate_blocks(self) -> List[Block]:
     blocks = []

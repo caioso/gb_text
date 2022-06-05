@@ -1,7 +1,8 @@
 # Keywords
 # General
 KEYWORD_BLOCK = "blk"
-KEYWORD_END = "end"
+KEYWORD_END = ["end", '\}']
+KEYWORD_BGN = ["bgn", '\{']
 KEYWORD_NAME = "name"
 
 # Alias
@@ -36,13 +37,23 @@ KEYWORD_EQU = "equ"
 
 # Regex Templates
 ALIAS_REGEX = r"^(\s)*" + KEYWORD_ALIAS + "(\s)*(\w)+,(.)*$"
-BLOCK_REGEX = r"^(\s)*" + KEYWORD_BLOCK + "(\s)*(" + KEYWORD_PROGRAM + "|" + \
-                                     KEYWORD_LOOP + "|" + \
-                                     KEYWORD_FUNCTION + "|" + \
-                                     KEYWORD_IF + "|" + \
-                                     KEYWORD_DATA_STRUCT + ")?(\s)*$"
+BLOCK_HEADER_BLK_REGEX = r"(\s)*blk(\s)*"
+BLOCK_HEADER_PRG_REGEX = r"(\s)*blk(\s)+prg(\s)*"
+BLOCK_HEADER_LP_REGEX =  r"(\s)*blk(\s)+lp(\s)*"
+BLOCK_HEADER_IF_REGEX =  r"(\s)*blk(\s)+if(\s)*"
+BLOCK_HEADER_FN_REGEX =  r"(\s)*blk(\s)+fn(\s)*"
+BLOCK_HEADER_DS_REGEX =  r"(\s)*blk(\s)+ds(\s)*"
+
+BLOCK_BLK_REGEX = r"(\s)*blk(\s)+(bgn|\{)"
+BLOCK_PRG_REGEX = r"(\s)*blk(\s)+prg(\s)+name(\s)+(\w)+(\s)*(bgn|\{)"
+BLOCK_LP_REGEX =  r"(\s)*blk(\s)+lp(\s)+(bgn|\{)"
+BLOCK_IF_REGEX =  r"(\s)*blk(\s)+if(\s)+(cnd(.*)(\s)*)*(bgn|\{)"
+BLOCK_FN_REGEX =  r"(\s)*blk(\s)+fn(\s)+name(\s)+(\w)+(\s)*(bgn|\{)"
+BLOCK_DS_REGEX =  r"(\s)*blk(\s)+ds(\s)+name(\s)+(\w)+(\s)*(bgn|\{)"
+
 NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*(\w)+(\s)*$"
-END_REGEX = r"^(\s)*" + KEYWORD_END +"(\s)*$"
+END_REGEX = r"^(\s)*(end|\})" + "(\s)*$"
+BGN_REGEX = r"^(\s)*(bgn|\{)" + "(\s)*$"
 CONDITION_REGEX = r"^(\s)*cnd(\s)+\$?((\[)?(.*)(\])?)(\s)+" +\
                   r"(ge|gt|eq|ne|le|lt|\=\=|\!\=|\>|\<|\<\=|\>\=)(\s)+" +\
                   r"\$?((\[)?(.*)(\])?)(\s)*(and|or|\&\&|\|\|)?(\s)*$"
@@ -118,7 +129,8 @@ KEYWORDS = ["DEF", "BANK", "ALIGN", "SIZEOF" , "STARTOF", "SIN" , "COS" , "TAN",
             "sbc" , "scf" , "stop", "sla", "sra", "srl" , "sub", "swap", "xor",
             "a", "b" , "c", "d" , "e", "h" , "l", "af" , "bc" , "de" , "sp",
             "hl" ,  "hld/hl-" ,  "hli/hl+", "nz" , "z", "nc,", "ne", "NE", "!=", "eq", "EQ", "==", "lt", "LT", "<", "le", "LE", "<=", "gt", "GT", ">", "ge", "GE", ">=", "and", "or", "&&", "||",
-            KEYWORD_BLOCK, KEYWORD_BLOCK.upper(), KEYWORD_END, KEYWORD_END.upper(), KEYWORD_NAME, KEYWORD_NAME.upper(),
+            KEYWORD_BLOCK, KEYWORD_BLOCK.upper(), KEYWORD_END[0], KEYWORD_END[0].upper(), KEYWORD_END[1],
+            KEYWORD_BGN[0], KEYWORD_BGN[0].upper(), KEYWORD_BGN[1], KEYWORD_NAME, KEYWORD_NAME.upper(),
 KEYWORD_ALIAS, KEYWORD_ALIAS.upper(), KEYWORD_LOOP, KEYWORD_LOOP.upper(), KEYWORD_BREAK, KEYWORD_BREAK.upper(),
 KEYWORD_PROGRAM, KEYWORD_PROGRAM.upper(), KEYWORD_JUMP, KEYWORD_JUMP.upper(), KEYWORD_JUMP_RELATIVE, KEYWORD_JUMP_RELATIVE.upper(),
 KEYWORD_FUNCTION, KEYWORD_FUNCTION.upper(), KEYWORD_CALL, KEYWORD_CALL.upper(), KEYWORD_RETURN, KEYWORD_RETURN.upper(),

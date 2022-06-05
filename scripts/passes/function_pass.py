@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List
+from typing import List, Tuple
 
 from enums import BlockType
 from support.function import Function
@@ -16,7 +16,7 @@ class FunctionPass:
     self._input_file = input_file
     self._blocks = blocks
 
-  def process(self) -> None:
+  def process(self) -> Tuple[List[Function], List[str]]:
     self._processed_source = self._raw_source
     functions_blocks = self._find_functions()
     functions = self._process_function(functions_blocks)
@@ -28,7 +28,7 @@ class FunctionPass:
   def _find_functions(self) -> List[Block]:
     return [x for x in self._blocks if x.type == BlockType.FNC_BLOCK]
 
-  def _process_function(self, func_blocks: List[Block]) -> Function:
+  def _process_function(self, func_blocks: List[Block]) -> List[Function]:
     functions = []
 
     for block in func_blocks:
