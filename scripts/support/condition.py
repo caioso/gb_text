@@ -1,5 +1,3 @@
-from support.assembler_identifier import AssemblerIdentifier
-
 class Condition:
   def __init__(self, left_op: str, right_op: str, boolean_op: str, logic_op: str):
     self._left_operand = left_op

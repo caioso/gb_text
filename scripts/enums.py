@@ -5,7 +5,8 @@ class LabelOperation(Enum):
   UNDEF_LABEL = "UNDEF_LABEL"
 
 class BlockMarkerType(Enum):
-  BLOCK_START = "BLOCK_START"
+  BLOCK_DECL = "BLOCK_DECL"
+  BLOCK_BGN = "BLOCK_BGN"
   BLOCK_END = "BLOCK_END"
 
 class BlockType(Enum):

@@ -10,6 +10,7 @@ from passes.block_mapping_pass import BlocksMappingPass
 from passes.condition_pass import ConditionPass
 from passes.find_includes_pass import FindIncludesPass
 from passes.function_pass import FunctionPass
+from passes.memory_pass import MemoryPass
 from passes.register_alias_pass import RegisterAliasPass
 from utils import Utils
 
@@ -49,6 +50,8 @@ def process_file(input_file: str, output_file: str, include_path: List[str]) -> 
   functions, file_source = functions_pass.process()
   reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks, identifiers, functions)
   file_source = reg_alias_pass.process()
+  memory_pass = MemoryPass(input_file, file_source, blocks, identifiers, functions)
+  file_source = memory_pass.process()
   cond_pass = ConditionPass(input_file, file_source, blocks, identifiers, functions)
   cond_pass.process()
   final_source = file_source

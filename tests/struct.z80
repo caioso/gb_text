@@ -1,0 +1,54 @@
+; Hardware definitions
+include "inc/hardware.inc"
+
+; Section definition
+section "start", rom0[$0100]
+nop
+jp structs_demo ; Jump to program entry
+
+; ROM Header
+ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
+
+; Type declaration
+; Struct example being used in heap address
+blk ds
+  .name: test_heap
+bgn
+  attr attribute_1
+  attr attribute_2
+  attr attribute_3
+  attr attribute_4
+end
+
+; Struct example being used in stack
+blk ds
+  .name: test_stack
+bgn
+  attr name_a
+  attr name_b
+end
+
+; program struct_demo
+; Declare two s
+blk prg
+  .name: structs_demo
+bgn
+  ; Allocate stack space for instance_2
+  ; add sp, 4
+  ;   name        type        location
+  var instance_1, test_heap,  $00FF
+  var instance_2, test_stack, stack
+
+  ; ld a, [$00FF + 3]
+  ld a, instance_1.attribute_3
+  ld b, a
+  ; ld hl, sp + $01
+  ; ld a, [hl]
+  ld a, instance_2.name_a
+  add b
+  ; ld [$00FF + 4], a
+  ld instance_1.attribute_4, a
+
+  ; Dealocate stack space for instance_2
+  ; add sp, -4
+end ; blk prg

@@ -3,7 +3,7 @@
 KEYWORD_BLOCK = "blk"
 KEYWORD_END = ["end", '\}']
 KEYWORD_BGN = ["bgn", '\{']
-KEYWORD_NAME = "name"
+KEYWORD_NAME = ".name:"
 
 # Alias
 KEYWORD_ALIAS = "als"
@@ -26,10 +26,11 @@ KEYWORD_RETURN_I = "reti"
 # Conditions
 KEYWORD_IF = "if"
 KEYWORD_ELSE = "else"
-KEYWORD_CND = "cnd"
+KEYWORD_CND = ".cnd:"
 
 # Structs
 KEYWORD_DATA_STRUCT = "ds"
+KEYWORD_ATTRIBUTE = "attr"
 
 # Assembler
 KEYWORD_DEF = "def"
@@ -45,16 +46,18 @@ BLOCK_HEADER_FN_REGEX =  r"(\s)*blk(\s)+fn(\s)*"
 BLOCK_HEADER_DS_REGEX =  r"(\s)*blk(\s)+ds(\s)*"
 
 BLOCK_BLK_REGEX = r"(\s)*blk(\s)+(bgn|\{)"
-BLOCK_PRG_REGEX = r"(\s)*blk(\s)+prg(\s)+name(\s)+(\w)+(\s)*(bgn|\{)"
+BLOCK_PRG_REGEX = r"(\s)*blk(\s)+prg(\s)+\.name:(\s)+(\w)+(\s)*(bgn|\{)"
 BLOCK_LP_REGEX =  r"(\s)*blk(\s)+lp(\s)+(bgn|\{)"
-BLOCK_IF_REGEX =  r"(\s)*blk(\s)+if(\s)+(cnd(.*)(\s)*)*(bgn|\{)"
-BLOCK_FN_REGEX =  r"(\s)*blk(\s)+fn(\s)+name(\s)+(\w)+(\s)*(bgn|\{)"
-BLOCK_DS_REGEX =  r"(\s)*blk(\s)+ds(\s)+name(\s)+(\w)+(\s)*(bgn|\{)"
+BLOCK_IF_REGEX =  r"(\s)*blk(\s)+if(\s)+(\.cnd:(.*)(\s)*)*(bgn|\{)"
+BLOCK_FN_REGEX =  r"(\s)*blk(\s)+fn(\s)+\.name:(\s)+(\w)+(\s)*(bgn|\{)"
+BLOCK_DS_REGEX =  r"(\s)*blk(\s)+ds(\s)+\.name:(\s)+(\w)+(\s)*(bgn|\{)"
+
+NAME_ATTRIBUTE = r"^(\s)*" + KEYWORD_ATTRIBUTE + "(\s)*(\w)+(\s)*$"
 
 NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*(\w)+(\s)*$"
 END_REGEX = r"^(\s)*(end|\})" + "(\s)*$"
 BGN_REGEX = r"^(\s)*(bgn|\{)" + "(\s)*$"
-CONDITION_REGEX = r"^(\s)*cnd(\s)+\$?((\[)?(.*)(\])?)(\s)+" +\
+CONDITION_REGEX = r"^(\s)*\.cnd:(\s)+\$?((\[)?(.*)(\])?)(\s)+" +\
                   r"(ge|gt|eq|ne|le|lt|\=\=|\!\=|\>|\<|\<\=|\>\=)(\s)+" +\
                   r"\$?((\[)?(.*)(\])?)(\s)*(and|or|\&\&|\|\|)?(\s)*$"
 INCLUDE_REGEX = r"^(include)(\s)*\"((\w)+|(\/)*|(\w+)*|(.))+\"(\s)*$"

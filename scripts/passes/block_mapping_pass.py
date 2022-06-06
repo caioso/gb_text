@@ -41,7 +41,7 @@ class BlocksMappingPass:
          re.match(BLOCK_HEADER_FN_REGEX, clear_line) or \
          re.match(BLOCK_HEADER_DS_REGEX, clear_line):
         self._processed_source[idx] = f"; {line}"
-        self._block_list.append(BlockMarker(idx, BlockMarkerType.BLOCK_START))
+        self._block_list.append(BlockMarker(idx, BlockMarkerType.BLOCK_DECL))
         self._block_type_list.append(self._detect_block_type(clear_line, idx))
       elif re.match(BGN_REGEX, clear_line) or \
            (KEYWORD_BGN[0] in clear_line or \
@@ -52,6 +52,8 @@ class BlocksMappingPass:
                                f"{idx + 1}: keyword '{KEYWORD_BGN[0]}' and "+
                                f"'{KEYWORD_BGN[1]}' must be the only token in the line")
           self._processed_source[idx] = f"; {line}"
+          self._block_list.append(BlockMarker(idx, BlockMarkerType.BLOCK_BGN))
+          self._block_type_list.append(self._detect_block_type(clear_line, idx))
       elif re.match(END_REGEX, clear_line)  or \
            (KEYWORD_END[0] in clear_line or \
             KEYWORD_END[1] in clear_line):
@@ -91,15 +93,36 @@ class BlocksMappingPass:
 
   def _validate_blocks(self) -> None:
     block_stack = []
-
     for block in self._block_list:
-      if block.type == BlockMarkerType.BLOCK_START:
+      if block.type == BlockMarkerType.BLOCK_DECL:
         block_stack.append(1)
+      elif block.type == BlockMarkerType.BLOCK_BGN:
+        block_stack.append(2)
       elif block.type == BlockMarkerType.BLOCK_END:
-        if len(block_stack) == 0:
-          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+        if len(block_stack) <= 1:
+          if len(block_stack) != 0:
+            stack_value = block_stack.pop()
+            if stack_value == 1:
+              raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                             f"{block.position + 1}: 'bgn' or '{{' expected")
+            elif stack_value == 2:
+              raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                             f"{len(self._processed_source)}: 'blk' expected")
+          else:
+            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                                f"{block.position + 1}: unexpected 'end' or '}}'")
-        block_stack.pop()
+
+        else:
+          first_value = block_stack.pop()
+          second_value = block_stack.pop()
+
+          if first_value != 2:
+            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                             f"{len(self._processed_source)}: 'bgn' or '{{' expected")
+
+          if second_value != 1:
+            raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                             f"{len(self._processed_source)}: 'blk' expected")
 
     if len(block_stack) != 0:
       raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
@@ -113,7 +136,7 @@ class BlocksMappingPass:
     block_end = 0
 
     for idx, block in enumerate(self._block_list):
-      if block.type == BlockMarkerType.BLOCK_START:
+      if block.type == BlockMarkerType.BLOCK_DECL:
         blocks_start.append(block.position)
         blocks_type.append(self._block_type_list[idx])
       elif block.type == BlockMarkerType.BLOCK_END:
