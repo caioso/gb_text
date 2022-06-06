@@ -1,23 +1,23 @@
 ROM0 bank #0:
-  SECTION: $0100-$028c ($018d bytes) ["start"]
+  SECTION: $0100-$0292 ($0193 bytes) ["start"]
            $0150 = fn_main
-           $0173 = fn_main.loop_copy_tiles_end
-           $0186 = fn_main.loop_load_white_1
-           $018a = fn_main.loop_load_even_line_tiles
-           $0192 = fn_main.loop_load_white_2
-           $0194 = fn_main.loop_write_tile_to_map
-           $01df = fn_main_loop_sprite_update
-           $01f7 = fn_main_loop_sprite_update.inc_x
-           $01fe = fn_main_loop_sprite_update.dec_x
-           $0203 = fn_main_loop_sprite_update.end_x
-           $0215 = fn_main_loop_sprite_update.inc_y
-           $021c = fn_main_loop_sprite_update.dec_y
-           $0221 = fn_main_loop_sprite_update.end_y
-           $0222 = fn_main_loop_bg_update
-           $0235 = fn__wait_until_vblank
-           $023c = fn_switch_screen_off
-           $024d = tl_face
-           $026d = tl_bg_length
-           $028d = tl_white_length
-    SLACK: $3e73 bytes
+           $0179 = loop_copy_tiles_end
+           $018c = loop_copy_tiles_end.loop_load_white_1
+           $0190 = loop_copy_tiles_end.loop_load_even_line_tiles
+           $0198 = loop_copy_tiles_end.loop_load_white_2
+           $019a = loop_copy_tiles_end.loop_write_tile_to_map
+           $01e5 = fn_main_loop_sprite_update
+           $01fd = fn_main_loop_sprite_update.inc_x
+           $0204 = fn_main_loop_sprite_update.dec_x
+           $0209 = fn_main_loop_sprite_update.end_x
+           $021b = fn_main_loop_sprite_update.inc_y
+           $0222 = fn_main_loop_sprite_update.dec_y
+           $0227 = fn_main_loop_sprite_update.end_y
+           $0228 = fn_main_loop_bg_update
+           $023b = fn__wait_until_vblank
+           $0242 = fn_switch_screen_off
+           $0253 = tl_face
+           $0273 = tl_bg_length
+           $0293 = tl_white_length
+    SLACK: $3e6d bytes
 

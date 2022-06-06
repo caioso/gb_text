@@ -1,6 +1,5 @@
 import os
 import re
-from turtle import clear
 from typing import List, Tuple
 
 from enums import BlockType
@@ -11,7 +10,7 @@ from support.data_structure import DataStructure
 from support.function import Function
 from utils import Utils
 
-class MemoryPass:
+class StructPass:
   def  __init__(self,
                 input_file: str,
                 source: List[str],
@@ -26,14 +25,14 @@ class MemoryPass:
 
   def process(self) -> List[DataStructure]:
     data_structure_blocks = self._find_data_structure_blocks()
-    ds, name_lines = self._parse_data_structure_name(data_structure_blocks)
-    ds = self._parse_data_structure_fields(ds, name_lines, data_structure_blocks)
+    data_structures, name_lines = self._parse_data_structure_name(data_structure_blocks)
+    data_structures = self._parse_data_structure_fields(data_structures, name_lines, data_structure_blocks)
     return self._raw_source
 
   def _find_data_structure_blocks(self):
     return [x for x in self._blocks if x.type == BlockType.DS_BLOCK]
 
-  def _parse_data_structure_fields(self, ds: List[DataStructure], lines: List[int], blocks: List[Block]) -> List[DataStructure]:
+  def _parse_data_structure_fields(self, data_structures: List[DataStructure], lines: List[int], blocks: List[Block]) -> List[DataStructure]:
     for idx, block in enumerate(blocks):
       print(range(lines[idx], block.end))
       offset = 0
@@ -41,10 +40,10 @@ class MemoryPass:
         clear_line = Utils.extract_line_no_comments(self._raw_source[line])
         if re.match(NAME_ATTRIBUTE, clear_line):
           tokens = Utils.split_tokens(clear_line)
-          ds[idx].register_attribute(tokens[1], offset, self._input_file, line)
+          data_structures[idx].register_attribute(tokens[1], offset, self._input_file, line)
           offset += 1
 
-    return ds
+    return data_structures
 
   def _parse_data_structure_name(self, data_structures: List[Block]) -> Tuple[List[DataStructure], List[int]]:
     ds = []

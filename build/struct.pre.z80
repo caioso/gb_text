@@ -10,6 +10,7 @@ jp structs_demo ; Jump to program entry
 ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 
 ; Type declaration
+; Struct example being used in heap address
 ; blk ds
   .name: test_heap
 ; bgn
@@ -19,6 +20,7 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
   attr attribute_4
 ; end
 
+; Struct example being used in stack
 ; blk ds
   .name: test_stack
 ; bgn
@@ -29,7 +31,7 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 ; program struct_demo
 ; Declare two s
 ; blk prg
-  .name: structs_demo
+structs_demo: ;  .name: structs_demo
 ; bgn
   ; Allocate stack space for instance_2
   ; add sp, 4

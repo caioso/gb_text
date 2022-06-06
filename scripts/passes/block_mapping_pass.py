@@ -43,24 +43,20 @@ class BlocksMappingPass:
         self._processed_source[idx] = f"; {line}"
         self._block_list.append(BlockMarker(idx, BlockMarkerType.BLOCK_DECL))
         self._block_type_list.append(self._detect_block_type(clear_line, idx))
-      elif re.match(BGN_REGEX, clear_line) or \
-           (KEYWORD_BGN[0] in clear_line or \
-            KEYWORD_BGN[1] in clear_line):
+      elif re.match(BGN_REGEX, clear_line):
           tokens = Utils.split_tokens(clear_line)
           if len(tokens) != 1:
             raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                               f"{idx + 1}: keyword '{KEYWORD_BGN[0]}' and "+
+                               f"{idx + 1}: keyword '{KEYWORD_BGN[0]}' or "+
                                f"'{KEYWORD_BGN[1]}' must be the only token in the line")
           self._processed_source[idx] = f"; {line}"
           self._block_list.append(BlockMarker(idx, BlockMarkerType.BLOCK_BGN))
           self._block_type_list.append(self._detect_block_type(clear_line, idx))
-      elif re.match(END_REGEX, clear_line)  or \
-           (KEYWORD_END[0] in clear_line or \
-            KEYWORD_END[1] in clear_line):
+      elif re.match(END_REGEX, clear_line):
         tokens = Utils.split_tokens(clear_line)
         if len(tokens) != 1:
           raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                              f"{idx + 1}: keyword '{KEYWORD_END[0]}' and "+
+                              f"{idx + 1}: keyword '{KEYWORD_END[0]}' or "+
                               f"'{KEYWORD_END[1]}' must be the only token in the line")
 
         self._processed_source[idx] = f"; {line}"
