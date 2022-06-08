@@ -54,7 +54,7 @@ def process_file(input_file: str, output_file: str, include_path: List[str]) -> 
   reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks, identifiers, functions)
   file_source = reg_alias_pass.process()
   struct_pass = StructPass(input_file, file_source, blocks, identifiers, functions)
-  file_source = struct_pass.process()
+  structs, file_source = struct_pass.process()
   cond_pass = ConditionPass(input_file, file_source, blocks, identifiers, functions)
   cond_pass.process()
   final_source = file_source

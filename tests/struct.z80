@@ -14,18 +14,19 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 blk ds
   .name: test_heap
 bgn
-  attr attribute_1
-  attr attribute_2
-  attr attribute_3
-  attr attribute_4
+  ;    name         type
+  attr attribute_1, byte  ; 1 byte
+  attr attribute_2, half  ; 2 bytes
+  attr attribute_3, word  ; 4 bytes
+  attr attribute_4, long  ; 8 bytes
 end
 
 ; Struct example being used in stack
 blk ds
   .name: test_stack
 bgn
-  attr name_a
-  attr name_b
+  attr name_a, byte
+  attr name_b, byte
 end
 
 ; program struct_demo
@@ -38,6 +39,8 @@ bgn
   ;   name        type        location
   var instance_1, test_heap,  $00FF
   var instance_2, test_stack, stack
+  var local_1,    byte,       stack
+  var local_2,    word,       $A000
 
   ; ld a, [$00FF + 3]
   ld a, instance_1.attribute_3
@@ -52,3 +55,9 @@ bgn
   ; Dealocate stack space for instance_2
   ; add sp, -4
 end ; blk prg
+
+blk fn
+  .name: my_function
+bgn
+  ret
+end ; fn

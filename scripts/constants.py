@@ -28,9 +28,13 @@ KEYWORD_IF = "if"
 KEYWORD_ELSE = "else"
 KEYWORD_CND = ".cnd:"
 
-# Structs
+# Structs/vars
 KEYWORD_DATA_STRUCT = "ds"
 KEYWORD_ATTRIBUTE = "attr"
+KEYWORD_BYTE = "byte"
+KEYWORD_HALF = "half"
+KEYWORD_WORD = "word"
+KEYWORD_LONG = "long"
 
 # Assembler
 KEYWORD_DEF = "def"
@@ -45,16 +49,18 @@ BLOCK_HEADER_IF_REGEX =  r"(\s)*blk(\s)+if(\s)*"
 BLOCK_HEADER_FN_REGEX =  r"(\s)*blk(\s)+fn(\s)*"
 BLOCK_HEADER_DS_REGEX =  r"(\s)*blk(\s)+ds(\s)*"
 
+IDENTIFIER_REGEX = r"([a-zA-Z_$][a-zA-Z_$0-9]*)"
+
 BLOCK_BLK_REGEX = r"(\s)*blk(\s)+(bgn|\{)"
-BLOCK_PRG_REGEX = r"(\s)*blk(\s)+prg(\s)+\.name:(\s)+(\w)+(\s)*(bgn|\{)"
+BLOCK_PRG_REGEX = r"(\s)*blk(\s)+prg(\s)+\.name:(\s)+"+IDENTIFIER_REGEX+"+(\s)*(bgn|\{)"
 BLOCK_LP_REGEX =  r"(\s)*blk(\s)+lp(\s)+(bgn|\{)"
 BLOCK_IF_REGEX =  r"(\s)*blk(\s)+if(\s)+(\.cnd:(.*)(\s)*)*(bgn|\{)"
-BLOCK_FN_REGEX =  r"(\s)*blk(\s)+fn(\s)+\.name:(\s)+(\w)+(\s)*(bgn|\{)"
-BLOCK_DS_REGEX =  r"(\s)*blk(\s)+ds(\s)+\.name:(\s)+(\w)+(\s)*(bgn|\{)"
+BLOCK_FN_REGEX =  r"(\s)*blk(\s)+fn(\s)+\.name:(\s)+"+IDENTIFIER_REGEX+"+(\s)*(bgn|\{)"
+BLOCK_DS_REGEX =  r"(\s)*blk(\s)+ds(\s)+\.name:(\s)+"+IDENTIFIER_REGEX+"+(\s)*(bgn|\{)"
 
-NAME_ATTRIBUTE = r"^(\s)*" + KEYWORD_ATTRIBUTE + "(\s)*(\w)+(\s)*$"
+ATTRIBUTE_DECLARATION_REGEX = r"^(\s)*" + KEYWORD_ATTRIBUTE + "(\s)+" + IDENTIFIER_REGEX + "(\s)*,(\s)*(\w)+(\s)*$"
 
-NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*(\w)+(\s)*$"
+NAME_REGEX = r"^(\s)*" + KEYWORD_NAME + "(\s)*"+ IDENTIFIER_REGEX +"(\s)*$"
 END_REGEX = r"^(\s)*(end|\})" + "(\s)*$"
 BGN_REGEX = r"^(\s)*(bgn|\{)" + "(\s)*$"
 CONDITION_REGEX = r"^(\s)*\.cnd:(\s)+\$?((\[)?(.*)(\])?)(\s)+" +\
@@ -65,7 +71,7 @@ MEMORY_ALIAS_REGEX = r"^(\s)*(DEF|def)?(_|\w)*(\s)+(EQU|equ)(\s)*"
 MACRO_REGEX = r"^(\s)*((_|(\w)*))(\s)*(:)(\s)*(macro|MACRO)(\s)*$"
 LABEL_REGEX = r"^(\s)*(\.)?((_|(\w)*))(\s)*(:)(\s)*$"
 NUMBER_REGEX = r"((\$|\&|%)?([0-9A-F]|[0-9a-f]))+"
-IDENTIFIER_NAME_REGEX = r"^[a-zA-Z_][a-zA-Z_0-9]*$"
+IDENTIFIER_NAME_REGEX = r"^" + IDENTIFIER_REGEX + "$"
 CONDITIONAL_OPERATORS = ["ge", "gt", "eq", "ne",
                          "le", "lt", "==", "!=",
                          ">" , "<" , ">=", "<="]

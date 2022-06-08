@@ -1,10 +1,45 @@
 import os
+
+from enum import Enum
 from typing import List
 
+class AttributeType(Enum):
+  BYTE = "BYTE"
+  HALF = "HALF"
+  WORD = "WORD"
+  LONG = "LONG"
+
+def convert_str_to_enum(type_text: str, line: int, file_name: str) -> AttributeType:
+  text = type_text.upper()
+  if text == AttributeType.BYTE.value:
+    return AttributeType.BYTE
+  elif text == AttributeType.HALF.value:
+    return AttributeType.HALF
+  elif text == AttributeType.WORD.value:
+    return AttributeType.WORD
+  elif text == AttributeType.LONG.value:
+    return AttributeType.LONG
+  else:
+    raise RuntimeError(f"{os.path.basename(file_name)} line " +
+                       f"{line + 1}: invalid data type '{type_text}'")
+
+
+def convert_type_to_size(type: AttributeType) -> int:
+  if type == AttributeType.BYTE:
+    return 1
+  elif type == AttributeType.HALF:
+    return 2
+  elif type == AttributeType.WORD:
+    return 4
+  elif type == AttributeType.LONG:
+    return 8
+
+
 class Attribute:
-  def __init__(self, name: str, offset: int):
+  def __init__(self, name: str, type: AttributeType, offset: int):
     self._name = name
     self._offset = offset
+    self._type = type
 
   @property
   def name(self) -> str:
@@ -13,6 +48,10 @@ class Attribute:
   @property
   def offset(self) -> int:
     return self._offset
+
+  @property
+  def type(self) -> AttributeType:
+    return self._type
 
 class DataStructure:
   def __init__(self, name: str):
@@ -27,11 +66,11 @@ class DataStructure:
   def attribures(self) -> List[Attribute]:
     return self._attributes
 
-  def register_attribute(self, name: str, offset: int, file: str, line: int) -> None:
+  def register_attribute(self, name: str, type: AttributeType, offset: int, file: str, line: int) -> None:
 
     for att in self._attributes:
       if att.name == name:
         raise RuntimeError(f"{os.path.basename(file)} line " +
                               f"{line + 1}: multiple definitions of attribute'{name}' " +
                               f"in data structu '{self._name}'")
-    self._attributes.append(Attribute(name, offset))
+    self._attributes.append(Attribute(name, type, offset))

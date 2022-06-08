@@ -64,6 +64,10 @@ class FunctionPass:
     name = ""
     for line in range(blk.start, blk.end):
       clear_line = Utils.extract_line_no_comments(self._raw_source[line])
+
+      if len(clear_line) == 0:
+        continue
+
       if re.match(NAME_REGEX, clear_line):
         tokens = Utils.split_tokens(clear_line)
 
@@ -73,7 +77,10 @@ class FunctionPass:
                                f"in function '{name}'")
         self._processed_source[line] = f"; {self._raw_source[line]}"
         name = tokens[1]
-
+        break
+      else:
+         raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                            f"{line + 1}: function name expected")
     return name
 
   def _emit_function_body(self, functions: List[Function]) -> None:
