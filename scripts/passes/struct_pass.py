@@ -40,6 +40,7 @@ class StructPass:
   def _parse_data_structure_fields(self, data_structures: List[DataStructure], lines: List[int], blocks: List[Block]) -> List[DataStructure]:
     for idx, block in enumerate(blocks):
       offset = 0
+      print(lines)
       for line in range(lines[idx] + 1, block.end):
         clear_line = Utils.extract_line_no_comments(self._raw_source[line])
 
@@ -91,6 +92,8 @@ class StructPass:
             break
           elif KEYWORD_NAME in clear_line:
             raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
-                               f"{line + 1}: expected '{KEYWORD_NAME}' in data structure declaration")
-
+                               f"{line + 1}: invalid data structure name declaration")
+          else:
+              raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                               f"{line + 1}: data structure name expected")
     return ds, positions
