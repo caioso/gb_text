@@ -29,6 +29,11 @@ class ProgramPass:
       clear_line = Utils.extract_line_no_comments(self._raw_source[line])
       if re.match(NAME_REGEX, clear_line):
         tokens = Utils.split_tokens(clear_line)
+
+        if Utils.is_valid_identifier(tokens[1]) == False:
+          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                             f"{line + 1}: invalid program identifier '{tokens[1]}'")
+
         program = Program(tokens[1], self._input_file)
         self._raw_source[line] = f'{program.name}: ;{self._raw_source[line]}'
         return program

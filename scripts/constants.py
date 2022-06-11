@@ -36,6 +36,9 @@ KEYWORD_BYTE = "byte"
 KEYWORD_HALF = "half"
 KEYWORD_WORD = "word"
 KEYWORD_LONG = "long"
+KEYWORD_VAR = "var"
+KEYWORD_STACK = "stack"
+KEYWORD_HEAP = "heap"
 
 # Assembler
 KEYWORD_DEF = "def"
@@ -73,6 +76,7 @@ MACRO_REGEX = r"^(\s)*((_|(\w)*))(\s)*(:)(\s)*(macro|MACRO)(\s)*$"
 LABEL_REGEX = r"^(\s)*(\.)?((_|(\w)*))(\s)*(:)(\s)*$"
 NUMBER_REGEX = r"((\$|\&|%)?([0-9A-F]|[0-9a-f]))+"
 IDENTIFIER_NAME_REGEX = r"^" + IDENTIFIER_REGEX + "$"
+VARIABLE_DEFINITION_REGEX = r"^(\s)*var(\s)+(\w)+(\s)*,(\s)*(\w)+(\s)*,(\s)*((" + KEYWORD_STACK  + r")|((" + KEYWORD_HEAP + r")(\s)*\[(\s)*" + NUMBER_REGEX + r"(\s)*\](\s)*))$"
 CONDITIONAL_OPERATORS = ["ge", "gt", "eq", "ne",
                          "le", "lt", "==", "!=",
                          ">" , "<" , ">=", "<="]
@@ -146,4 +150,5 @@ KEYWORD_PROGRAM, KEYWORD_PROGRAM.upper(), KEYWORD_JUMP, KEYWORD_JUMP.upper(), KE
 KEYWORD_FUNCTION, KEYWORD_FUNCTION.upper(), KEYWORD_CALL, KEYWORD_CALL.upper(), KEYWORD_RETURN, KEYWORD_RETURN.upper(),
 KEYWORD_RETURN, KEYWORD_RETURN.upper(), KEYWORD_RETURN_I, KEYWORD_RETURN_I.upper(), KEYWORD_IF, KEYWORD_IF.upper(),
 KEYWORD_ELSE, KEYWORD_ELSE.upper(), KEYWORD_CND, KEYWORD_CND.upper(), KEYWORD_DATA_STRUCT, KEYWORD_DATA_STRUCT.upper(),
-KEYWORD_DEF, KEYWORD_DEF.upper(), KEYWORD_EQU, KEYWORD_EQU.upper(), ]
+KEYWORD_DEF, KEYWORD_DEF.upper(), KEYWORD_EQU, KEYWORD_EQU.upper(), KEYWORD_VAR, KEYWORD_LONG, KEYWORD_WORD, KEYWORD_HALF, KEYWORD_HALF, KEYWORD_ATTRIBUTE,
+KEYWORD_STACK, KEYWORD_HEAP]

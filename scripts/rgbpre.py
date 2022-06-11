@@ -12,7 +12,8 @@ from passes.find_includes_pass import FindIncludesPass
 from passes.function_pass import FunctionPass
 from passes.program_pass import ProgramPass
 from passes.register_alias_pass import RegisterAliasPass
-from passes.struct_pass import StructPass
+from passes.struct_declaration_pass import StructDeclarationPass
+from passes.variables_pass import VariablesPass
 from utils import Utils
 
 # sys.tracebacklimit = 0
@@ -53,8 +54,12 @@ def process_file(input_file: str, output_file: str, include_path: List[str]) -> 
   functions, file_source = functions_pass.process()
   reg_alias_pass = RegisterAliasPass(input_file, file_source, blocks, identifiers, functions)
   file_source = reg_alias_pass.process()
-  struct_pass = StructPass(input_file, file_source, blocks, identifiers, functions)
+  struct_pass = StructDeclarationPass(input_file, file_source, blocks, identifiers, functions)
   structs, file_source = struct_pass.process()
+
+  variables_pass = VariablesPass(input_file, file_source, blocks, structs, identifiers)
+  file_source = variables_pass.process()
+
   cond_pass = ConditionPass(input_file, file_source, blocks, identifiers, functions)
   cond_pass.process()
   final_source = file_source

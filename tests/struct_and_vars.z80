@@ -12,13 +12,13 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 ; Type declaration
 ; Struct example being used in heap address
 blk ds
-  .name: test_heap
+  .name: test_heap_name
 bgn
   ;    name         type
   attr attribute_1, byte  ; 1 byte
   attr attribute_2, half  ; 2 bytes
   attr attribute_3, word  ; 4 bytes
-  attr attribute_4, long  ; 8 bytes
+  attr attribute_4, long,  ; 8 bytes
 end
 
 ; Struct example being used in stack
@@ -30,17 +30,17 @@ bgn
 end
 
 ; program struct_demo
-; Declare two s
+; Declare two struct instances
 blk prg
   .name: structs_demo
 bgn
   ; Allocate stack space for instance_2
   ; add sp, 4
   ;   name        type        location
-  var instance_1, test_heap,  $00FF
+  var instance_1, test_heap,  heap[$00FF]
   var instance_2, test_stack, stack
   var local_1,    byte,       stack
-  var local_2,    word,       $A000
+  var local_2,    word,       heap[$A000]
 
   ; ld a, [$00FF + 3]
   ld a, instance_1.attribute_3
@@ -52,10 +52,20 @@ bgn
   ; ld [$00FF + 4], a
   ld instance_1.attribute_4, a
 
+  ; Sub-scope test
+  blk
+  bgn
+    var internal_variable, word,        stack
+    var another_var,       test_heap,   stack
+
+    ld internal_variable, $04
+  end
+
   ; Dealocate stack space for instance_2
   ; add sp, -4
 end ; blk prg
 
+; Dummy Function
 blk fn
   .name: my_function
 bgn

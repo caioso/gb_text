@@ -32,3 +32,7 @@ class ConditionalOperand(Enum):
   MEMORY_ALIAS = "MEMORY_ALIAS"
   NUMBER = "NUMBER"
   INVALID = "INVALID"
+
+class StorageType(Enum):
+  STACK_STORAGE = "STACK_STORAGE"
+  HEAP_STORAGE = "HEAP_STORAGE"

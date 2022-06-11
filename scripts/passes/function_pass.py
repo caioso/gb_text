@@ -76,6 +76,11 @@ class FunctionPass:
                                f"{line + 1}: unexpected keyword 'name' " +
                                f"in function '{name}'")
         self._processed_source[line] = f"; {self._raw_source[line]}"
+
+        if Utils.is_valid_identifier(tokens[1]) == False:
+          raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                             f"{line + 1}: invalid function identifier '{tokens[1]}'")
+
         name = tokens[1]
         break
       else:

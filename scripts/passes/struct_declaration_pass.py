@@ -14,7 +14,7 @@ from support.data_structure import (
 from support.function import Function
 from utils import Utils
 
-class StructPass:
+class StructDeclarationPass:
   def  __init__(self,
                 input_file: str,
                 source: List[str],
@@ -50,11 +50,15 @@ class StructPass:
 
           type = convert_str_to_enum(tokens[2], line, self._input_file)
 
+          if Utils.is_valid_identifier(tokens[1]) == False:
+              raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                                 f"{line + 1}: invalid data structure attribute identifier '{tokens[1]}'")
+
           data_structures[idx].register_attribute(tokens[1], type, offset, self._input_file, line)
           offset += convert_type_to_size(type)
 
           self._processed_source[line] = f";{self._processed_source[line]}"
-        elif KEYWORD_ATTRIBUTE in clear_line:
+        elif re.match(r"\b" + KEYWORD_ATTRIBUTE + r"\b", clear_line):
           raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                                f"{line + 1}: invalid attribute declaration")
 
@@ -85,12 +89,15 @@ class StructPass:
             if tokens[1] in function_names:
               raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                                  f"{line + 1}: multiple definitions of identifier '{tokens[1]}'")
+            if Utils.is_valid_identifier(tokens[1]) == False:
+              raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                                 f"{line + 1}: invalid data structure identifier '{tokens[1]}'")
 
             ds.append(DataStructure(tokens[1]))
             positions.append(line)
             self._processed_source[line] = f";{self._processed_source[line]}"
             break
-          elif KEYWORD_NAME in clear_line:
+          elif re.match(r"\b" + KEYWORD_NAME + r"\b", clear_line):
             raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                                f"{line + 1}: invalid data structure name declaration")
           else:
