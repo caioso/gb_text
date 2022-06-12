@@ -107,3 +107,20 @@ class Utils:
           min_id = block.id
 
     return min_id
+
+  @staticmethod
+  def convert_string_to_number(number: str, line:int, file:str) -> int:
+    integer = 0
+    try:
+      if number[0] == '$':
+        integer = int(number[1:], 16)
+      elif number[0] == '&':
+        integer = int(number[1:], 8)
+      elif number[0] == '%':
+        integer = int(number[1:], 2)
+      else:
+        integer = int(number[1:], 10)
+    except:
+      raise RuntimeError(f"{os.path.basename(file)} line " +
+                         f"{line + 1}: invalid numeric literal '{number}'")
+    return integer

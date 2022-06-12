@@ -12,7 +12,7 @@ ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 ; Type declaration
 ; Struct example being used in heap address
 blk ds
-  .name: test_heap_name
+  .name: test_heap
 bgn
   ;    name         type
   attr attribute_1, byte  ; 1 byte
@@ -41,6 +41,7 @@ bgn
   var instance_2, test_stack, stack
   var local_1,    byte,       stack
   var local_2,    word,       heap[$A000]
+  var local_3,    word,       heap[$A002]
 
   ; ld a, [$00FF + 3]
   ld a, instance_1.attribute_3

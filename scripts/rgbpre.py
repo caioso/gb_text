@@ -58,7 +58,7 @@ def process_file(input_file: str, output_file: str, include_path: List[str]) -> 
   structs, file_source = struct_pass.process()
 
   variables_pass = VariablesPass(input_file, file_source, blocks, structs, identifiers)
-  file_source = variables_pass.process()
+  file_source, blocks = variables_pass.process()
 
   cond_pass = ConditionPass(input_file, file_source, blocks, identifiers, functions)
   cond_pass.process()

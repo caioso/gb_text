@@ -36,3 +36,4 @@ class ConditionalOperand(Enum):
 class StorageType(Enum):
   STACK_STORAGE = "STACK_STORAGE"
   HEAP_STORAGE = "HEAP_STORAGE"
+  INVALID_STORAGE = "INVALID_STORAGE"

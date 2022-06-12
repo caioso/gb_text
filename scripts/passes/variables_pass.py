@@ -1,15 +1,16 @@
 import os
-from pydoc import splitdoc
 import re
-from typing import List
+from typing import List, Tuple
 
 from constants import *
+from enums import StorageType
 from support.assembler_identifier import AssemblerIdentifier
 from support.block import (
   Block
 )
 from passes.struct_declaration_pass import DataStructure
 from support.variable import Variable
+from support.variable_storage import VariableStorage
 from utils import Utils
 
 class VariablesPass:
@@ -26,15 +27,17 @@ class VariablesPass:
     self._structs = structs
 
 
-  def process(self) -> List[str]:
+  def process(self) -> Tuple[List[str], List[Block]]:
     self._processed_source = self._raw_source
 
     for block in self._blocks:
       print (f"Block: {block.id}")
       self._map_variables_per_block(block)
+      for var in block.variables:
+        print(f'\t{var.name} @{var.storage.storage.value}[{var.storage.address}] -> {var.type}')
       print('\n')
 
-    return self._processed_source
+    return self._processed_source, self._blocks
 
   def _map_variables_per_block(self, block: Block) -> None:
     for line in range(block.start, block.end):
@@ -45,17 +48,35 @@ class VariablesPass:
           tokens = Utils.split_tokens(clear_line)
 
           if Utils.find_parent_block_id(line, self._blocks) == block.id:
-            self._construct_variable_object(tokens, line)
+            variable = self._construct_variable_object(tokens, line)
+            block.register_variable(variable, line, self._input_file)
 
         elif re.search(r"\b" + KEYWORD_VAR + r"\b", clear_line):
           raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                                f"{line + 1}: invalid variable definition")
 
   def _construct_variable_object(self, tokens: List[str], line: int) -> Variable:
+    storage = StorageType.INVALID_STORAGE
+    heap_address = ""
     if tokens[3] == KEYWORD_STACK:
-      print('stack')
+      storage = StorageType.STACK_STORAGE
     elif KEYWORD_HEAP in tokens[3]:
-      print ("heap")
+      storage = StorageType.HEAP_STORAGE
+      address = tokens[3].replace('[', ' ')
+      address = address.replace(']', ' ')
+      heap_address = Utils.split_tokens(address)[1]
     else:
       raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                          f"{line + 1}: invalid variable storage")
+
+    name = tokens[1]
+    if Utils.is_valid_identifier(name) == False:
+      raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                         f"{line + 1}: invalid variable identifier '{tokens[1]}'")
+    type = tokens[2]
+    struct_type_names = [x.name for x in self._structs]
+    if type not in VARIABLE_TYPES and type not in struct_type_names:
+      raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                         f"{line + 1}: invalid variable type '{tokens[2]}'")
+
+    return Variable(line, name, type, VariableStorage(storage, heap_address))
