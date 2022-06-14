@@ -2,6 +2,7 @@ import os
 
 from enum import Enum
 from typing import List
+from constants import *
 
 class AttributeType(Enum):
   BYTE = "BYTE"
@@ -74,3 +75,26 @@ class DataStructure:
                               f"{line + 1}: multiple definitions of attribute'{name}' " +
                               f"in data structu '{self._name}'")
     self._attributes.append(Attribute(name, type, offset))
+
+def get_basic_type_size(type_name: str, line:int, file:str) -> int:
+  size = 0
+  if type_name.lower() == KEYWORD_BYTE:
+    size = 1
+  elif type_name.lower() == KEYWORD_HALF:
+    size = 2
+  elif type_name.lower() == KEYWORD_WORD:
+    size = 4
+  elif type_name.lower() == KEYWORD_LONG:
+    size = 8
+  else:
+    raise RuntimeError(f"{os.path.basename(file)} line " +
+                        f"{line + 1}: invalid type '{type_name}'")
+  print(f"type_name {size}")
+  return size
+
+def get_struct_type_size(type: DataStructure, line:int, file:str) -> int:
+  size = 0
+  for att in type.attribures:
+    size += get_basic_type_size(att.type.value, line, file)
+  print(f"struct_type_name {size}")
+  return size

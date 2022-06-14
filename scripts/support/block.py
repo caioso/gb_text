@@ -7,6 +7,12 @@ from enums import (
   BlockType,
   StorageType
 )
+from constants import *
+from support.data_structure import (
+  DataStructure,
+  get_basic_type_size,
+  get_struct_type_size
+)
 from support.variable import Variable
 from typing import List
 
@@ -53,6 +59,21 @@ class Block:
                           f"{line + 1}: multiple variable definitions at the same address '{var.storage.address}'")
 
     self._variables.append(var)
+
+  def get_stack_allocation_size(self, structs: List[DataStructure], line: int, file: str) -> int:
+    stack_vars = [x for x in self._variables if x.storage.storage == StorageType.STACK_STORAGE]
+    stack_space = 0
+    for var in stack_vars:
+      if var.type in VARIABLE_BASIC_TYPES:
+        stack_space += get_basic_type_size(var.type, line, file)
+      else:
+        struct_type = [x for x in structs if x.name == var.type][0]
+        if struct_type != None:
+          stack_space += get_struct_type_size(struct_type, line, file)
+        else:
+          raise RuntimeError(f"{os.path.basename(file)} line " +
+                          f"{line + 1}: invalid data type '{var.type}'")
+    return stack_space
 
   def _get_variable_names(self) -> List[str]:
     return [x.name for x in self._variables]

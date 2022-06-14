@@ -3,6 +3,7 @@ import re
 import sys
 
 from constants import *
+from support.data_structure import DataStructure
 from support.assembler_identifier import AssemblerIdentifier
 from support.block import Block
 from typing import List

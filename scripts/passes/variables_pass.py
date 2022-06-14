@@ -1,3 +1,4 @@
+from ctypes import alignment
 import os
 import re
 from typing import List, Tuple
@@ -31,11 +32,18 @@ class VariablesPass:
     self._processed_source = self._raw_source
 
     for block in self._blocks:
-      print (f"Block: {block.id}")
       self._map_variables_per_block(block)
-      for var in block.variables:
-        print(f'\t{var.name} @{var.storage.storage.value}[{var.storage.address}] -> {var.type}')
-      print('\n')
+
+      # add code to reserve variable space
+      stack_allocation = block.get_stack_allocation_size(self._structs, 0, self._input_file)
+      if stack_allocation != 0:
+        for line in range(block.start, block.end):
+          if Utils.find_parent_block_id(line, self._blocks) == block.id:
+            if KEYWORD_BGN[0] in self._processed_source[line]:
+              alignment = Utils.get_alignment(self._processed_source[block.start])
+              self._processed_source[line] += f"{alignment}add sp, {stack_allocation}\n"
+              self._processed_source[block.end] = f"{alignment}sub sp, {stack_allocation}\n" + self._processed_source[block.end]
+              break
 
     return self._processed_source, self._blocks
 
@@ -75,7 +83,7 @@ class VariablesPass:
                          f"{line + 1}: invalid variable identifier '{tokens[1]}'")
     type = tokens[2]
     struct_type_names = [x.name for x in self._structs]
-    if type not in VARIABLE_TYPES and type not in struct_type_names:
+    if type not in VARIABLE_BASIC_TYPES and type not in struct_type_names:
       raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
                          f"{line + 1}: invalid variable type '{tokens[2]}'")
 
