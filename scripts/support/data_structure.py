@@ -89,12 +89,10 @@ def get_basic_type_size(type_name: str, line:int, file:str) -> int:
   else:
     raise RuntimeError(f"{os.path.basename(file)} line " +
                         f"{line + 1}: invalid type '{type_name}'")
-  print(f"type_name {size}")
   return size
 
 def get_struct_type_size(type: DataStructure, line:int, file:str) -> int:
   size = 0
   for att in type.attribures:
     size += get_basic_type_size(att.type.value, line, file)
-  print(f"struct_type_name {size}")
   return size

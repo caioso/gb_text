@@ -66,6 +66,7 @@ bgn
   blk
   bgn
     var the_var, test_heap, stack
+    ld a, the_var
     ret
   end
 

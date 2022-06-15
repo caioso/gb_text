@@ -39,7 +39,16 @@ class VariablesPass:
       stack_allocation = block.get_stack_allocation_size(self._structs, block.start, self._input_file);
       self._insert_stack_allocation_code(block, stack_allocation)
       self._insert_stack_deallocation_code(block, stack_allocation)
+      self._process_variable_usage(block)
     return self._processed_source, self._blocks
+
+  def _process_variable_usage(self, block: Block) -> None:
+    variable_names = [x.name for x in block.variables]
+    for line in range(block.start, block.end):
+      clear_line = Utils.extract_line_no_comments(self._processed_source[line])
+      for variable in variable_names:
+        if re.search(variable + r"(\.|\,)?", clear_line) != None:
+          print(f"Variable {variable} found in line {line}")
 
   def _insert_stack_allocation_code(self, block: Block, allocation: int) -> None:
     if allocation != 0:
