@@ -3,8 +3,10 @@ import os
 import re
 from typing import List, Tuple
 
+from numpy import var
+
 from constants import *
-from enums import StorageType
+from enums import *
 from support.assembler_identifier import AssemblerIdentifier
 from support.block import (
   Block
@@ -31,21 +33,46 @@ class VariablesPass:
   def process(self) -> Tuple[List[str], List[Block]]:
     self._processed_source = self._raw_source
 
-    for block in self._blocks:
+    func_or_prg_blocks = [x for x in self._blocks if (x.type == BlockType.FNC_BLOCK or x.type == BlockType.PRG_BLOCK)]
+    for block in func_or_prg_blocks:
       self._map_variables_per_block(block)
-
-      # add code to reserve variable space
-      stack_allocation = block.get_stack_allocation_size(self._structs, 0, self._input_file)
-      if stack_allocation != 0:
-        for line in range(block.start, block.end):
-          if Utils.find_parent_block_id(line, self._blocks) == block.id:
-            if KEYWORD_BGN[0] in self._processed_source[line]:
-              alignment = Utils.get_alignment(self._processed_source[block.start])
-              self._processed_source[line] += f"{alignment}add sp, {stack_allocation}\n"
-              self._processed_source[block.end] = f"{alignment}sub sp, {stack_allocation}\n" + self._processed_source[block.end]
-              break
-
+      stack_allocation = block.get_stack_allocation_size(self._structs, block.start, self._input_file);
+      self._insert_stack_allocation_code(block, stack_allocation)
+      self._insert_stack_deallocation_code(block, stack_allocation)
     return self._processed_source, self._blocks
+
+  def _insert_stack_allocation_code(self, block: Block, allocation: int) -> None:
+    if allocation != 0:
+      for line in range(block.start, block.end):
+        tokens = Utils.split_tokens(self._processed_source[line])
+        if (KEYWORD_BGN[0] in tokens or \
+            KEYWORD_BGN[1] in tokens) and \
+           Utils.find_parent_block_id(line, self._blocks) == block.id:
+          alignment = Utils.get_alignment(self._raw_source[block.start])
+          self._processed_source[line] += f"{alignment}add sp, {allocation}\n"
+          return
+
+      raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                        f"{block.start + 1}: expected keyword '{KEYWORD_BGN[0]}' or '{KEYWORD_BGN[1]}'")
+
+  def _insert_stack_deallocation_code(self, block: Block, allocation: int) -> None:
+    if allocation != 0:
+      # add dealocation to the end of the block
+      tokens = Utils.split_tokens(self._processed_source[block.end])
+      if (KEYWORD_END[0] in tokens or \
+          KEYWORD_END[1] in tokens) and \
+          Utils.find_parent_block_id(block.end, self._blocks) == block.id:
+        alignment = Utils.get_alignment(self._raw_source[block.end - 1])
+        self._processed_source[block.end] = f"{alignment}sub sp, {allocation}\n{self._processed_source[block.end]}"
+      else:
+        raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                           f"{block.start + 1}: expected keyword '{KEYWORD_END[0]}' or '{KEYWORD_END[1]}'")
+
+    for line in range(block.start, block.end):
+      tokens = Utils.split_tokens(self._processed_source[line])
+      if (KEYWORD_RETURN in tokens or KEYWORD_RETURN_I in tokens):
+        alignment = Utils.get_alignment(self._raw_source[line])
+        self._processed_source[line] = f"{alignment}sub sp, {allocation}\n{self._processed_source[line]}"
 
   def _map_variables_per_block(self, block: Block) -> None:
     for line in range(block.start, block.end):
@@ -55,9 +82,10 @@ class VariablesPass:
           clear_line = clear_line.replace(',', ' ')
           tokens = Utils.split_tokens(clear_line)
 
-          if Utils.find_parent_block_id(line, self._blocks) == block.id:
-            variable = self._construct_variable_object(tokens, line)
-            block.register_variable(variable, line, self._input_file)
+          variable = self._construct_variable_object(tokens, line)
+          block.register_variable(variable, line, self._input_file)
+
+          self._processed_source[line] = f";{self._processed_source[line]}"
 
         elif re.search(r"\b" + KEYWORD_VAR + r"\b", clear_line):
           raise RuntimeError(f"{os.path.basename(self._input_file)} line " +

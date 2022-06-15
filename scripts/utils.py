@@ -100,6 +100,9 @@ class Utils:
     min_diff = sys.maxsize
     min_id = -1
 
+    if line_number <= 0:
+      return min_id
+
     for block in blocks:
       if line_number >= block.start and line_number <= block.end:
         diff = abs(block.start - line_number)

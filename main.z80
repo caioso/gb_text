@@ -70,7 +70,7 @@ blk fn
   .name: test_function
 bgn
 loop_copy_tiles_end:
-
+  add sp, 8
   als hl, tile_pointer
   als b, line_counter
   als c, column_counter
@@ -235,6 +235,7 @@ bgn
   ld [rSCY], a
   ret
 end
+end
 
 blk fn
   .name: wait_until_vblank
@@ -263,7 +264,6 @@ fn_switch_screen_off:
   ld [rLCDC], a
   ret
 
-end
 
 ; Tile bytes
 tl_face:

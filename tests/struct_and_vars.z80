@@ -62,6 +62,13 @@ blk fn
   .name: my_function
 bgn
   var my_var, word, stack
+
+  blk
+  bgn
+    var the_var, test_heap, stack
+    ret
+  end
+
   # Stack dealocation must happen *BEFORE* return
   ret
 end ; fn

@@ -25,8 +25,16 @@ class BlocksMappingPass:
     self._processed_source = self._raw_source
     self._detect_blocks()
     self._validate_blocks()
-    blocks = self._generate_blocks()
-    return self._processed_source, blocks
+    self._blocks = self._generate_blocks()
+    self._check_block_nesting()
+    return self._processed_source, self._blocks
+
+  def _check_block_nesting(self) -> None:
+    for block in self._blocks:
+      if block.type == BlockType.FNC_BLOCK and \
+         Utils.find_parent_block_id(block.start - 1, self._blocks) != -1:
+        raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                           f"{block.start + 1}: nested functions are not allowed")
 
   def _detect_blocks(self) -> None:
     self._block_list = []
