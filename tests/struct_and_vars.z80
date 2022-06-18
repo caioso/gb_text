@@ -29,6 +29,8 @@ bgn
   attr name_b, byte
 end
 
+var my_var, test_stack, stack
+
 ; program struct_demo
 ; Declare two struct instances
 blk prg
@@ -44,15 +46,18 @@ bgn
   ld a, instance_1.attribute_3
   ld b, a
   ld a, instance_2.name_a
-  add b
+  add local_0
+  add a
   ld instance_1.attribute_4, a
-
+  ld instance_2.name_a, instance_1.attribute_1
   blk
   bgn
     var internal_variable, word,        stack
     var another_var,       test_heap,   stack
 
     ld internal_variable, $04
+    ld local_2, $05
+    add local_2, internal_variable
   end
 
 end ; blk prg

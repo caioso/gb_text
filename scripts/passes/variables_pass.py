@@ -1,9 +1,6 @@
-from ctypes import alignment
 import os
 import re
 from typing import List, Tuple
-
-from numpy import var
 
 from constants import *
 from enums import *
@@ -14,6 +11,7 @@ from support.block import (
 from passes.struct_declaration_pass import DataStructure
 from support.variable import Variable
 from support.variable_storage import VariableStorage
+from support.operand import Operand
 from utils import Utils
 
 class VariablesPass:
@@ -46,9 +44,37 @@ class VariablesPass:
     variable_names = [x.name for x in block.variables]
     for line in range(block.start, block.end):
       clear_line = Utils.extract_line_no_comments(self._processed_source[line])
+      print(f"Block {block.id}")
       for variable in variable_names:
         if re.search(variable + r"(\.|\,)?", clear_line) != None:
-          print(f"Variable {variable} found in line {line}")
+          if variable in [x.name for x in block.variables]:
+            self._process_line_variable_usage(clear_line, block, line)
+
+  def _process_line_variable_usage(self, clear_line: str, block: Block, line: int) -> None:
+    tokens = Utils.split_tokens(clear_line.replace(',', ' '))
+    print (tokens)
+    # Instructions
+    if tokens[0] in INSTRUCTIONS:
+      if len(tokens) == 3:
+        print("Two operands")
+        self._process_variable_in_two_operand_instruction(tokens, block, line)
+      elif len(tokens) == 2:
+        print("One operand")
+        self._process_variable_in_one_operand_instruction(tokens, block, line)
+      else:
+        raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
+                           f"{line + 1}: invalid instruction format'")
+     # High-level constructs
+
+  def _process_variable_in_one_operand_instruction(self, tokens: List[str], block: Block, line: int) -> None:
+    print("operand")
+    operand = Operand(tokens[1], block, line, self._input_file)
+
+  def _process_variable_in_two_operand_instruction(self, tokens: List[str], block: Block, line: int) -> None:
+    print("Left")
+    left_operand = Operand(tokens[1], block, line, self._input_file)
+    print("Right")
+    right_operand = Operand(tokens[2], block, line, self._input_file)
 
   def _insert_stack_allocation_code(self, block: Block, allocation: int) -> None:
     if allocation != 0:

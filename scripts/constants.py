@@ -103,6 +103,17 @@ TOKEN_REGISTER_HL = ["hl", "HL"]
 TOKEN_REGISTER =  ["a", "A", "b", "B", "c", "C", "d", "D", "e", "E",
                    "h", "H", "l", "L", "af", "AF", "bc", "BC", "de",
                    "DE", "hl", "HL",]
+INSTRUCTIONS = ["ADC" ,
+            "ADD" , "AND", "BIT" , "BIT", "BIT", "CALL" , "CCF" , "CP" , "CPL",
+            "DAA" , "DEC" , "DI", "EI", "HALT", "INC", "JP" , "JR", "LD", "LDI",
+            "LDD", "LDH", "NOP", "OR", "POP" , "PUSH", "RES" , "RET" , "RETI" ,
+            "RST", "RL" , "RLA" , "RLC" , "RLCA", "RR" , "RRA" , "RRC" , "RRCA",
+            "SBC" , "SCF" , "STOP", "SLA", "SRA", "SRL" , "SUB", "SWAP", "XOR","adc" ,
+            "add" , "and", "bit" , "bit", "bit", "call" , "ccf" , "cp" , "cpl",
+            "daa" , "dec" , "di", "ei", "halt", "inc", "jp" , "jr", "ld", "ldi",
+            "ldd", "ldh", "nop", "or", "pop" , "push", "res" , "ret" , "reti" ,
+            "rst", "rl" , "rla" , "rlc" , "rlca", "rr" , "rra" , "rrc" , "rrca",
+            "sbc" , "scf" , "stop", "sla", "sra", "srl" , "sub", "swap", "xor"]
 KEYWORDS = ["DEF", "BANK", "ALIGN", "SIZEOF" , "STARTOF", "SIN" , "COS" , "TAN",
             "ASIN" , "ACOS" , "ATAN" , "ATAN2", "FDIV", "FMUL", "POW", "LOG",
             "ROUND", "CEIL" , "FLOOR", "HIGH" , "LOW", "ISCONST", "STRCMP",
