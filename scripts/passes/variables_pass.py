@@ -6,7 +6,9 @@ from constants import *
 from enums import *
 from support.assembler_identifier import AssemblerIdentifier
 from support.block import (
-  Block
+  get_stack_allocation_size,
+  get_heap_allocation_size,
+  Block,
 )
 from passes.struct_declaration_pass import DataStructure
 from support.variable import Variable
@@ -30,21 +32,36 @@ class VariablesPass:
 
   def process(self) -> Tuple[List[str], List[Block]]:
     self._processed_source = self._raw_source
-
+    self._raw_source.append('\n\n; Stack Allocation Map')
     func_or_prg_blocks = [x for x in self._blocks if (x.type == BlockType.FNC_BLOCK or x.type == BlockType.PRG_BLOCK)]
     for block in func_or_prg_blocks:
       self._map_variables_per_block(block)
-      stack_allocation = block.get_stack_allocation_size(self._structs, block.start, self._input_file);
+      stack_allocation = get_stack_allocation_size(block.variables, self._structs, block.start, self._input_file);
       self._insert_stack_allocation_code(block, stack_allocation)
       self._insert_stack_deallocation_code(block, stack_allocation)
+      self._generate_allocation_map_comment(block)
       self._process_variable_usage(block)
     return self._processed_source, self._blocks
+
+  def _generate_allocation_map_comment(self, block: Block) -> None:
+    map_string = "\n"
+    map_string += f"; {block.type.value}: id {str(hex(block.id))}\n"
+    map_string += f"; stack allocation: {get_stack_allocation_size(block.variables, self._structs, 0, self._input_file)}\n"
+    stack_offset = 0
+    for var in block.stack_allocation_map:
+      map_string += f";  @Stack + {var.offset}: {var.variable.name} ({var.variable.type}: {var.size})\n"
+      stack_offset += var.size
+    map_string += f";  @Stack_end: (@Stack + {stack_offset})\n"
+    map_string += f"; heap allocation: {get_heap_allocation_size(block.variables, self._structs, 0, self._input_file)}\n"
+    for var in block.heap_allocation_map:
+      map_string += f";  @Heap:{var.address}: {var.variable.name} ({var.variable.type}: {var.size})\n"
+
+    self._raw_source.append(map_string)
 
   def _process_variable_usage(self, block: Block) -> None:
     variable_names = [x.name for x in block.variables]
     for line in range(block.start, block.end):
       clear_line = Utils.extract_line_no_comments(self._processed_source[line])
-      print(f"Block {block.id}")
       for variable in variable_names:
         if re.search(variable + r"(\.|\,)?", clear_line) != None:
           if variable in [x.name for x in block.variables]:
@@ -71,10 +88,11 @@ class VariablesPass:
     operand = Operand(tokens[1], block, line, self._input_file)
 
   def _process_variable_in_two_operand_instruction(self, tokens: List[str], block: Block, line: int) -> None:
-    print("Left")
     left_operand = Operand(tokens[1], block, line, self._input_file)
+    print(f"Left Operand: {left_operand.operand_name} ({left_operand.operand_type.value}) ({left_operand.operand_data_type})")
     print("Right")
     right_operand = Operand(tokens[2], block, line, self._input_file)
+    print(f"Left Operand: {right_operand.operand_name} ({right_operand.operand_type.value}) ({right_operand.operand_data_type})")
 
   def _insert_stack_allocation_code(self, block: Block, allocation: int) -> None:
     if allocation != 0:
@@ -118,7 +136,7 @@ class VariablesPass:
           tokens = Utils.split_tokens(clear_line)
 
           variable = self._construct_variable_object(tokens, line)
-          block.register_variable(variable, line, self._input_file)
+          block.register_variable(variable, self._structs, line, self._input_file)
 
           self._processed_source[line] = f";{self._processed_source[line]}"
 

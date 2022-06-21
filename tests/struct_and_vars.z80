@@ -54,6 +54,7 @@ bgn
   bgn
     var internal_variable, word,        stack
     var another_var,       test_heap,   stack
+    var heap_var,          byte,        heap[$0111]
 
     ld internal_variable, $04
     ld local_2, $05
@@ -66,8 +67,8 @@ end ; blk prg
 blk fn
   .name: my_function
 bgn
-  var my_var, word, stack
-
+  var my_var,       word,      stack
+  var another_var,  test_heap, heap[$D199]
   blk
   bgn
     var the_var, test_heap, stack

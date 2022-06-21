@@ -13,6 +13,7 @@ class Operand:
     operand = operand_code.replace(',','')
     self._operand_name = ""
     self._operand_attr_name = ""
+    self._operand_data_type = ""
 
     if '.' in operand:
       self._operand_name = operand.split('.')[0]
@@ -21,17 +22,12 @@ class Operand:
       self._operand_name = operand
 
     if self._operand_name in TOKEN_REGISTER:
-      print(f"operand {self._operand_name} is a register")
       self._operand_type = OperandType.REGISTER_OPERAND
     if re.match(NUMBER_REGEX, self._operand_name):
-      print(f"operand {self._operand_name} is a number")
       self._operand_type = OperandType.LITERAL_OPERAND
     elif self._find_variable_declaration_in_block(self._operand_name, block):
       self._operand_data_type = self._get_variable_type(self._operand_name, block)
-      print(f"operand {self._operand_name} is a variable ({self._operand_data_type})")
       self._operand_type = OperandType.VARIABLE_OPERAND
-      if len(self._operand_attr_name) != 0:
-        print(f"operand attribute -> {self._operand_attr_name}")
 
   def _get_variable_type(self, name:str, block: Block) -> str:
     for var in block.variables:
