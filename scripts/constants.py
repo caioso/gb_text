@@ -103,6 +103,9 @@ TOKEN_REGISTER_HL = ["hl", "HL"]
 TOKEN_REGISTER =  ["a", "A", "b", "B", "c", "C", "d", "D", "e", "E",
                    "h", "H", "l", "L", "af", "AF", "bc", "BC", "de",
                    "DE", "hl", "HL",]
+
+LD_INSTRUCTIONS = ["ld", "ldi", "LD", "LDI"]
+
 INSTRUCTIONS = ["ADC" ,
             "ADD" , "AND", "BIT" , "BIT", "BIT", "CALL" , "CCF" , "CP" , "CPL",
             "DAA" , "DEC" , "DI", "EI", "HALT", "INC", "JP" , "JR", "LD", "LDI",

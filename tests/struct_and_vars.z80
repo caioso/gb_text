@@ -44,8 +44,42 @@ bgn
   var local_3,    word,       heap[$A002]
 
   ld a, instance_1.attribute_3
+  ld instance_1.attribute_3, a
+  ; ld [instance_1.attribute_3], a
+  ld instance_1.attribute_3, b
+  ; ld [tmp], a
+  ; ld a, b
+  ; ld [instance_1.attribute_3], a -> Operation
+  ; ld a, [tmp]
+  add instance_1.attribute_3, b
+  ; ld [tmp], a
+  ; ld a, [instance_1.attribute_3]
+  ; add a, b -> Operation
+  ; ld [instance_1.attribute_3], a
+  ; ld a, [tmp]
+  add instance_1.attribute_3, a
+  ; ld [tmp], a
+  ; ld [tmp_2], b
+  ; ld b, a
+  ; ld a, [instance_1.attribute_3]
+  ; add a, b -> Operation
+  ; ld [instance_1.attribute_3], a
+  ; ld a, [tmp]
+  ; ld b, [tmp_2]
+  ld instance_1.attribute_3, $03
+  ; ld [tmp], a
+  ; ld a, $03
+  ; ld [instance_1.attribute_3], a
+  ; ld a, [tmp]
+  sub instance_1.attribute_3, $03
+  ; ld [tmp], a
+  ; ld a, [instance_1.attribute_3]
+  ; sub a, $03 -> Operation
+  ; ld [instance_1.attribute_3], a
+  ; ld a, [tmp]
+  ld instance_1.attribute_3, instance_1.attribute_2
   ld b, a
-  ld a, instance_2.name_a
+  ld instance_2.name_a, a
   add local_0
   add a
   ld instance_1.attribute_4, a

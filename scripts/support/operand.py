@@ -23,7 +23,7 @@ class Operand:
 
     if self._operand_name in TOKEN_REGISTER:
       self._operand_type = OperandType.REGISTER_OPERAND
-    if re.match(NUMBER_REGEX, self._operand_name):
+    elif re.match(NUMBER_REGEX, self._operand_name):
       self._operand_type = OperandType.LITERAL_OPERAND
     elif self._find_variable_declaration_in_block(self._operand_name, block):
       self._operand_data_type = self._get_variable_type(self._operand_name, block)

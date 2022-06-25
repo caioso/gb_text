@@ -69,14 +69,13 @@ class VariablesPass:
 
   def _process_line_variable_usage(self, clear_line: str, block: Block, line: int) -> None:
     tokens = Utils.split_tokens(clear_line.replace(',', ' '))
-    print (tokens)
+
     # Instructions
     if tokens[0] in INSTRUCTIONS:
       if len(tokens) == 3:
-        print("Two operands")
+        print (f"Instruction{clear_line}")
         self._process_variable_in_two_operand_instruction(tokens, block, line)
       elif len(tokens) == 2:
-        print("One operand")
         self._process_variable_in_one_operand_instruction(tokens, block, line)
       else:
         raise RuntimeError(f"{os.path.basename(self._input_file)} line " +
@@ -84,15 +83,57 @@ class VariablesPass:
      # High-level constructs
 
   def _process_variable_in_one_operand_instruction(self, tokens: List[str], block: Block, line: int) -> None:
-    print("operand")
     operand = Operand(tokens[1], block, line, self._input_file)
 
   def _process_variable_in_two_operand_instruction(self, tokens: List[str], block: Block, line: int) -> None:
     left_operand = Operand(tokens[1], block, line, self._input_file)
-    print(f"Left Operand: {left_operand.operand_name} ({left_operand.operand_type.value}) ({left_operand.operand_data_type})")
-    print("Right")
     right_operand = Operand(tokens[2], block, line, self._input_file)
-    print(f"Left Operand: {right_operand.operand_name} ({right_operand.operand_type.value}) ({right_operand.operand_data_type})")
+
+    if left_operand.operand_type == OperandType.VARIABLE_OPERAND:
+      if right_operand.operand_type == OperandType.REGISTER_OPERAND and \
+         tokens[0] in LD_INSTRUCTIONS:
+          if right_operand.operand_name not in TOKEN_REGISTER_A:
+            # instruction format: ld[i] <variable>, <register>
+            print(f"\tld [__tmp__], a")
+            print(f"\tld a, {right_operand.operand_name}")
+            print(f"\t{tokens[0]} [{left_operand.operand_name}], a")
+            print(f"\tld a, [__tmp__]")
+          else:
+             # instruction format: ld[i] <variable>, a
+            print(f"\t{tokens[0]} [{left_operand.operand_name}], a")
+      elif right_operand.operand_type == OperandType.REGISTER_OPERAND and \
+           tokens[0] not in LD_INSTRUCTIONS:
+          if right_operand.operand_name not in TOKEN_REGISTER_A:
+            # instruction format: add, sub ... <variable>, <register (not a)>
+            print(f"\tld [__tmp__], a")
+            print(f"\tld a, [{left_operand.operand_name}]")
+            print(f"\t{tokens[0]} a, {right_operand.operand_name}")
+            print(f"\tld [{left_operand.operand_name}], a")
+            print(f"\tld a, [__tmp__]")
+          else:
+            # instruction format: add, sub ... <variable>, a
+            print(f"\tld [__tmp__], a")
+            print(f"\tld [__tmp_2__], b")
+            print(f"\tld b, a")
+            print(f"\tld a, [{left_operand.operand_name}]")
+            print(f"\t{tokens[0]} a, b")
+            print(f"\tld [{left_operand.operand_name}], a")
+            print(f"\tld b, [__tmp_2__]")
+            print(f"\tld a, [__tmp__]")
+      elif right_operand.operand_type == OperandType.LITERAL_OPERAND:
+          if tokens[0] not in LD_INSTRUCTIONS:
+            # instruction format: add, sub ... <variable>, $literal$
+            print(f"\tld [__tmp__], a")
+            print(f"\tld a, [{left_operand.operand_name}]")
+            print(f"\t{tokens[0]} a, {right_operand.operand_name}")
+            print(f"\tld [{left_operand.operand_name}], a")
+            print(f"\tld a, [__tmp__]")
+          else:
+            # instruction format: ld[i] <variable>, $literal$
+            print(f"\tld [__tmp__], a")
+            print(f"\tld a, {right_operand.operand_name}")
+            print(f"\t{tokens[0]} [{left_operand.operand_name}], a")
+            print(f"\tld a, [__tmp__]")
 
   def _insert_stack_allocation_code(self, block: Block, allocation: int) -> None:
     if allocation != 0:
