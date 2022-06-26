@@ -1,0 +1,19 @@
+; Hardware definitions
+include "inc/hardware.inc"
+
+; Section definition
+section "start", rom0[$0100]
+nop
+jp program_test_case ; Jump to program entry
+
+; ROM Header
+ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
+
+; Program entry point
+blk prg
+  .name: program_test_case
+bgn
+
+; function body
+
+end ; prg
