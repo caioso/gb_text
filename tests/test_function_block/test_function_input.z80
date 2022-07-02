@@ -4,14 +4,21 @@ include "inc/hardware.inc"
 ; Section definition
 section "start", rom0[$0100]
 nop
-jp program_test_case ; Jump to program entry
+jp function_test_case ; Jump to program entry
 
 ; ROM Header
 ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 
 ; Program entry point
 blk prg
-  .name: program_test_case
+  .name: function_test_case
 bgn
 
 end ; prg
+
+; define a single test function
+blk fn
+  .name: test_function
+bgn
+
+end ; fn

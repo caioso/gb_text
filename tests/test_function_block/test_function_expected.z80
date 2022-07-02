@@ -4,20 +4,32 @@ include "inc/hardware.inc"
 ; Section definition
 section "start", rom0[$0100]
 nop
-jp program_test_case ; Jump to program entry
+jp function_test_case ; Jump to program entry
 
 ; ROM Header
 ROM_HEADER CART_ROM_ONLY, ROM_32K, RAM_NONE
 
 ; Program entry point
 ; blk prg
-program_test_case: ;  .name: program_test_case
+function_test_case: ;  .name: function_test_case
 ; bgn
 
 ; end ; prg
 
+; define a single test function
+fn__test_function: ; blk fn
+;   .name: test_function
+; bgn
+
+; end ; fn
+
 ; Stack Allocation Map
 ; PRG_BLOCK: id 0x0
+; stack allocation: 0
+;  @Stack_end: (@Stack + 0)
+; heap allocation: 0
+
+; FNC_BLOCK: id 0x1
 ; stack allocation: 0
 ;  @Stack_end: (@Stack + 0)
 ; heap allocation: 0
